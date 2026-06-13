@@ -8,7 +8,7 @@ A mobile-first static web app for practicing long division by filling missing di
 npm start
 ```
 
-Then open <http://localhost:5173>.
+Then open <http://localhost:5173>. The app uses relative asset URLs so it works both locally and under a GitHub Pages project path such as `/suanshi/`.
 
 ## Validate
 
