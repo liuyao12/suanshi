@@ -47,7 +47,6 @@ function makeWorkRows(dividend, divisor) {
     const remainderText = String(remainder);
     const startColumn = Math.max(0, column - partialText.length + 1);
     const productStart = Math.max(0, column - productText.length + 1);
-    const remainderStart = Math.max(0, column - remainderText.length + 1);
 
     const productRow = Array(width).fill(null);
     productText.split('').forEach((value, index) => {
@@ -61,22 +60,16 @@ function makeWorkRows(dividend, divisor) {
     }
     rows.push({ kind: 'line', cells: lineRow });
 
+    const hasNextDigit = column < width - 1;
+    const remainderWithBringDown = hasNextDigit ? `${remainder === 0 ? '' : remainder}${digits[column + 1]}` : remainderText;
+    const remainderEndColumn = hasNextDigit ? column + 1 : column;
+    const remainderWithBringDownStart = Math.max(0, remainderEndColumn - remainderWithBringDown.length + 1);
     const remainderRow = Array(width).fill(null);
-    remainderText.split('').forEach((value, index) => {
-      remainderRow[remainderStart + index] = token(`remainder-${column}-${index}`, value, column === width - 1 ? 'final remainder' : 'partial remainder');
+    remainderWithBringDown.split('').forEach((value, index) => {
+      const role = hasNextDigit && index === remainderWithBringDown.length - 1 ? 'brought-down dividend' : column === width - 1 ? 'final remainder' : 'partial remainder';
+      remainderRow[remainderWithBringDownStart + index] = token(`remainder-${column}-${index}`, value, role);
     });
     rows.push({ kind: 'number', cells: remainderRow });
-
-    if (column < width - 1) {
-      const nextDigit = digits[column + 1];
-      const bringDownText = `${remainder === 0 ? '' : remainder}${nextDigit}`;
-      const bringDownStart = Math.max(0, column + 1 - bringDownText.length + 1);
-      const bringDownRow = Array(width).fill(null);
-      bringDownText.split('').forEach((value, index) => {
-        bringDownRow[bringDownStart + index] = token(`bringdown-${column}-${index}`, value, 'brought-down dividend');
-      });
-      rows.push({ kind: 'bringdown', cells: bringDownRow });
-    }
 
     carried = remainder;
   });
