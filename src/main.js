@@ -120,7 +120,7 @@ function makePuzzle(difficultyKey) {
 function inputMarkup(cell) {
   const value = state.answers[cell.id] || '';
   const checked = state.status === 'checked' ? (value === cell.digit ? ' correct' : ' wrong') : '';
-  return `<input class="digit-input${checked}" data-id="${cell.id}" inputmode="numeric" pattern="[0-9]*" maxlength="1" aria-label="${cell.role} digit" value="${value}">`;
+  return `<input class="digit-input${checked}" data-id="${cell.id}" type="tel" inputmode="numeric" pattern="[0-9]*" maxlength="1" autocomplete="off" enterkeyhint="done" aria-label="${cell.role} digit" value="${value}">`;
 }
 
 function cellMarkup(cell, extraClass = '') {
@@ -216,11 +216,14 @@ app.addEventListener('input', (event) => {
   state.status = 'editing';
   state.message = 'Fill in every box. It checks automatically.';
   if (state.answers[id]) {
-    const blanks = [...state.puzzle.blanks];
-    const next = blanks[blanks.indexOf(id) + 1];
-    document.querySelector(`[data-id="${next}"]`)?.focus();
+    event.target.blur();
   }
   checkAnswer();
+});
+
+app.addEventListener('focusin', (event) => {
+  if (!event.target.matches('.digit-input')) return;
+  event.target.select();
 });
 
 newPuzzle();

@@ -20,6 +20,8 @@ body {
 
 button, input { font: inherit; }
 
+button, .digit-input { touch-action: manipulation; }
+
 .division-screen {
   min-height: 100vh;
   display: grid;
