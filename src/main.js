@@ -66,6 +66,18 @@ function makeWorkRows(dividend, divisor) {
       remainderRow[remainderStart + index] = token(`remainder-${column}-${index}`, value, column === width - 1 ? 'final remainder' : 'partial remainder');
     });
     rows.push({ kind: 'number', cells: remainderRow });
+
+    if (column < width - 1) {
+      const nextDigit = digits[column + 1];
+      const bringDownText = `${remainder === 0 ? '' : remainder}${nextDigit}`;
+      const bringDownStart = Math.max(0, column + 1 - bringDownText.length + 1);
+      const bringDownRow = Array(width).fill(null);
+      bringDownText.split('').forEach((value, index) => {
+        bringDownRow[bringDownStart + index] = token(`bringdown-${column}-${index}`, value, 'brought-down dividend');
+      });
+      rows.push({ kind: 'bringdown', cells: bringDownRow });
+    }
+
     carried = remainder;
   });
 
