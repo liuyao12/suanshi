@@ -26,4 +26,4 @@ This repository includes a GitHub Actions workflow that deploys the static site 
 https://<owner>.github.io/<repo>/
 ```
 
-If the URL returns 404 after merging, check **Actions → Deploy GitHub Pages** first. If there is no successful run, rerun the workflow manually. If the workflow cannot deploy, open **Settings → Pages**, set **Source** to **GitHub Actions**, and rerun **Deploy GitHub Pages**. The app also includes `404.html` as a static fallback for GitHub Pages project URLs.
+If the URL returns 404 after merging, check **Actions → Deploy GitHub Pages** first. A one-time manual setup may be required: open **Settings → Pages**, set **Source** to **GitHub Actions**, save, and rerun **Deploy GitHub Pages** from the default branch. If the workflow still fails, check **Settings → Environments → github-pages** and make sure deployments are not blocked by environment protection rules. The app also includes `404.html` as a static fallback for GitHub Pages project URLs.
