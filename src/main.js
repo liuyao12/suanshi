@@ -49,17 +49,11 @@ function makeWorkRows(dividend, divisor) {
     const productStart = Math.max(0, column - productText.length + 1);
     const remainderStart = Math.max(0, column - remainderText.length + 1);
 
-    const partialRow = Array(width).fill(null);
-    partialText.split('').forEach((value, index) => {
-      partialRow[startColumn + index] = token(`partial-${column}-${index}`, value, 'partial dividend');
-    });
-    rows.push({ kind: 'number', cells: partialRow });
-
     const productRow = Array(width).fill(null);
     productText.split('').forEach((value, index) => {
       productRow[productStart + index] = token(`product-${column}-${index}`, value, 'product');
     });
-    rows.push({ kind: 'subtract', cells: productRow });
+    rows.push({ kind: 'product', cells: productRow });
 
     const lineRow = Array(width).fill(null);
     for (let index = Math.min(startColumn, productStart); index <= column; index += 1) {
@@ -133,8 +127,7 @@ function cellMarkup(cell, extraClass = '') {
 }
 
 function rowMarkup(cells, className = '') {
-  const firstFilledIndex = cells.findIndex((cell) => cell?.digit !== undefined);
-  const contents = cells.map((cell, index) => cellMarkup(cell, className === 'subtract' && index === firstFilledIndex ? 'first-filled' : '')).join('');
+  const contents = cells.map((cell) => cellMarkup(cell)).join('');
   return `<div class="work-row ${className}" style="grid-template-columns: repeat(${state.puzzle.width}, var(--cell));">${contents}</div>`;
 }
 
