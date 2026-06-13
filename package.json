@@ -1,0 +1,10 @@
+{
+  "name": "long-division-puzzles",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Mobile-first long division digit puzzle web app.",
+  "scripts": {
+    "start": "python3 -m http.server 5173",
+    "build": "node --check src/main.js"
+  }
+}
