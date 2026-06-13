@@ -20,10 +20,10 @@ The build script performs a JavaScript syntax check, which keeps the app depende
 
 ## GitHub Pages
 
-This repository includes a GitHub Actions workflow that deploys the static site to GitHub Pages on every push to `main`. After the workflow runs, the site is available from the Pages URL shown in the workflow summary, usually:
+This repository includes a GitHub Actions workflow that deploys the static site to GitHub Pages on every push. After the workflow runs, the site is available from the Pages URL shown in the workflow summary, usually:
 
 ```text
 https://<owner>.github.io/<repo>/
 ```
 
-If Pages has not been enabled for the repository yet, open **Settings → Pages**, set **Source** to **GitHub Actions**, and rerun the **Deploy GitHub Pages** workflow.
+If the URL returns 404 after merging, check **Actions → Deploy GitHub Pages** first. If there is no successful run, rerun the workflow manually. If the workflow cannot deploy, open **Settings → Pages**, set **Source** to **GitHub Actions**, and rerun **Deploy GitHub Pages**. The app also includes `404.html` as a static fallback for GitHub Pages project URLs.
