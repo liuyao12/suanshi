@@ -9,6 +9,7 @@ const state = {
   answers: {},
   status: 'editing',
   puzzle: null,
+  expectedDigits: null,
 };
 
 const app = document.getElementById('root');
@@ -119,7 +120,8 @@ function makePuzzle(difficultyKey) {
 
 function inputMarkup(cell) {
   const value = state.answers[cell.id] || '';
-  const checked = state.status === 'checked' ? (value === cell.digit ? ' correct' : ' wrong') : '';
+  const expected = state.expectedDigits?.get(cell.id);
+  const checked = state.status === 'checked' ? (expected !== undefined && value === expected ? ' correct' : ' wrong') : '';
   return `<input class="digit-input${checked}" data-id="${cell.id}" type="tel" inputmode="numeric" pattern="[0-9]*" maxlength="1" autocomplete="off" enterkeyhint="done" aria-label="${cell.role} digit" value="${value}">`;
 }
 
@@ -167,6 +169,7 @@ function newPuzzle(difficulty = state.difficulty) {
   state.difficulty = difficulty;
   state.answers = {};
   state.status = 'editing';
+  state.expectedDigits = null;
   state.message = 'Fill in every box. It checks automatically.';
   state.puzzle = makePuzzle(difficulty);
   render();
@@ -176,31 +179,73 @@ function checkAnswer() {
   const blanks = [...state.puzzle.blanks];
   if (blanks.some((id) => !state.answers[id])) {
     state.status = 'editing';
+    state.expectedDigits = null;
     state.message = 'Fill in every box. It checks automatically.';
     return false;
   }
 
   state.status = 'checked';
-  if (blanks.every((id) => state.answers[id] === findDigit(id))) {
+  state.expectedDigits = expectedDigitsFromFilledProblem();
+  if (state.expectedDigits && allRenderedDigitsMatch(state.expectedDigits)) {
     state.message = '👍 Correct! New puzzle coming up.';
     render();
     window.setTimeout(() => newPuzzle(), 900);
     return true;
   }
 
-  state.message = 'Some boxes need another digit.';
+  state.message = 'Some boxes do not make a valid long division.';
   render();
   return false;
 }
 
-function findDigit(id) {
-  const allCells = [
+function valueForCell(cell) {
+  if (!cell) return '';
+  return state.puzzle.blanks.has(cell.id) ? state.answers[cell.id] || '' : cell.digit;
+}
+
+function numberFromCells(cells) {
+  const text = cells.map(valueForCell).join('').replace(/^0+(?=\d)/, '');
+  return text === '' ? NaN : Number(text);
+}
+
+function collectExpectedDigits(puzzle) {
+  const expected = new Map();
+  const collect = (cell) => {
+    if (cell?.digit !== undefined) expected.set(cell.id, cell.digit);
+  };
+  puzzle.divisorCells.forEach(collect);
+  puzzle.dividendCells.forEach(collect);
+  puzzle.quotientCells.forEach(collect);
+  puzzle.rows.forEach((row) => row.cells.forEach(collect));
+  return expected;
+}
+
+function expectedDigitsFromFilledProblem() {
+  const divisor = numberFromCells(state.puzzle.divisorCells);
+  const dividend = numberFromCells(state.puzzle.dividendCells);
+  const quotient = numberFromCells(state.puzzle.quotientCells);
+  if (!Number.isInteger(divisor) || !Number.isInteger(dividend) || !Number.isInteger(quotient) || divisor <= 0) return null;
+  if (Math.floor(dividend / divisor) !== quotient) return null;
+
+  const expectedWork = makeWorkRows(dividend, divisor);
+  const expectedPuzzle = {
+    divisorCells: String(divisor).split('').map((digit, index) => token(`divisor-${index}`, digit, 'divisor')),
+    dividendCells: String(dividend).split('').map((digit, index) => token(`dividend-${index}`, digit, 'dividend')),
+    quotientCells: expectedWork.quotientCells,
+    rows: expectedWork.rows,
+  };
+  return collectExpectedDigits(expectedPuzzle);
+}
+
+function allRenderedDigitsMatch(expected) {
+  const currentCells = [
     ...state.puzzle.divisorCells,
     ...state.puzzle.dividendCells,
     ...state.puzzle.quotientCells,
     ...state.puzzle.rows.flatMap((row) => row.cells),
-  ];
-  return allCells.find((cell) => cell?.id === id)?.digit;
+  ].filter((cell) => cell?.digit !== undefined);
+
+  return currentCells.every((cell) => expected.get(cell.id) === valueForCell(cell));
 }
 
 app.addEventListener('click', (event) => {
@@ -214,6 +259,7 @@ app.addEventListener('input', (event) => {
   state.answers[id] = event.target.value.replace(/\D/g, '').slice(-1);
   event.target.value = state.answers[id];
   state.status = 'editing';
+  state.expectedDigits = null;
   state.message = 'Fill in every box. It checks automatically.';
   if (state.answers[id]) {
     event.target.blur();
