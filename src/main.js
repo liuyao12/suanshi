@@ -153,11 +153,7 @@ function render() {
             <div class="rows">${puzzle.rows.map((row) => rowMarkup(row.cells, row.kind)).join('')}</div>
           </div>
         </section>
-        <div class="feedback" aria-live="polite">${state.message || 'Fill in every box.'}</div>
-        <div class="actions">
-          <button class="check" data-action="check" type="button">Check</button>
-          <button class="next" data-action="next" type="button">New</button>
-        </div>
+        <div class="feedback" aria-live="polite">${state.message || 'Fill in every box. It checks automatically.'}</div>
       </div>
     </main>`;
 }
@@ -166,26 +162,30 @@ function newPuzzle(difficulty = state.difficulty) {
   state.difficulty = difficulty;
   state.answers = {};
   state.status = 'editing';
-  state.message = 'Fill in every box.';
+  state.message = 'Fill in every box. It checks automatically.';
   state.puzzle = makePuzzle(difficulty);
   render();
 }
 
 function checkAnswer() {
   const blanks = [...state.puzzle.blanks];
-  const missing = blanks.some((id) => !state.answers[id]);
+  if (blanks.some((id) => !state.answers[id])) {
+    state.status = 'editing';
+    state.message = 'Fill in every box. It checks automatically.';
+    return false;
+  }
+
   state.status = 'checked';
-  if (missing) {
-    state.message = 'Some boxes are still empty.';
-  } else if (blanks.every((id) => state.answers[id] === findDigit(id))) {
-    state.message = 'Correct! New puzzle coming up.';
+  if (blanks.every((id) => state.answers[id] === findDigit(id))) {
+    state.message = '👍 Correct! New puzzle coming up.';
     render();
     window.setTimeout(() => newPuzzle(), 900);
-    return;
-  } else {
-    state.message = 'Check the red boxes.';
+    return true;
   }
+
+  state.message = 'Some boxes need another digit.';
   render();
+  return false;
 }
 
 function findDigit(id) {
@@ -200,10 +200,7 @@ function findDigit(id) {
 
 app.addEventListener('click', (event) => {
   const difficulty = event.target.closest('[data-difficulty]')?.dataset.difficulty;
-  const action = event.target.closest('[data-action]')?.dataset.action;
   if (difficulty) newPuzzle(difficulty);
-  if (action === 'next') newPuzzle();
-  if (action === 'check') checkAnswer();
 });
 
 app.addEventListener('input', (event) => {
@@ -211,11 +208,14 @@ app.addEventListener('input', (event) => {
   const id = event.target.dataset.id;
   state.answers[id] = event.target.value.replace(/\D/g, '').slice(-1);
   event.target.value = state.answers[id];
+  state.status = 'editing';
+  state.message = 'Fill in every box. It checks automatically.';
   if (state.answers[id]) {
     const blanks = [...state.puzzle.blanks];
     const next = blanks[blanks.indexOf(id) + 1];
     document.querySelector(`[data-id="${next}"]`)?.focus();
   }
+  checkAnswer();
 });
 
 newPuzzle();
