@@ -1,0 +1,248 @@
+:root {
+  --cell: clamp(1.65rem, 9.4vw, 3.25rem);
+  color: #101820;
+  background: #f7f0df;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root { min-height: 100%; }
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: #f7f0df;
+}
+
+button, input { font: inherit; }
+
+button, .digit-input { touch-action: manipulation; }
+
+.division-screen {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: clamp(0.35rem, 2vw, 1.25rem);
+}
+
+.stage {
+  width: min(100%, 58rem);
+  display: grid;
+  place-items: center;
+}
+
+.sheet {
+  width: min(100%, 46rem);
+  min-height: calc(100vh - clamp(0.7rem, 4vw, 2.5rem));
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: clamp(0.45rem, 2vh, 1rem);
+  padding: clamp(0.5rem, 3vw, 1.5rem);
+  background:
+    linear-gradient(rgba(54, 83, 120, 0.08) 1px, transparent 1px) 0 0 / 100% 2.15rem,
+    #fffaf0;
+  border: 1px solid #e5d8bb;
+  border-radius: clamp(0.8rem, 4vw, 1.4rem);
+  box-shadow: 0 1rem 3rem rgba(65, 44, 13, 0.16);
+}
+
+.topbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.4rem 0.65rem;
+}
+
+.segmented {
+  display: flex;
+  justify-content: center;
+  gap: 0.4rem;
+}
+
+.mini {
+  border: 1px solid #d0bea0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.8);
+  color: #463a2b;
+  cursor: pointer;
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: clamp(0.68rem, 2.4vw, 0.78rem);
+  font-weight: 800;
+}
+
+.mini {
+  min-height: 2rem;
+  padding: 0 0.75rem;
+}
+
+.mini.active {
+  border-color: #243f74;
+  background: #243f74;
+  color: #fff;
+}
+
+.division-problem {
+  align-self: center;
+  justify-self: center;
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 0.25rem;
+  font-size: clamp(1.35rem, 8vw, 2.8rem);
+  font-weight: 800;
+  line-height: 1;
+}
+
+.quotient-band, .work-band, .bracket-band {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: end;
+}
+
+.divisor-spacer, .divisor-area {
+  min-width: calc(var(--cell) * 2.15);
+}
+
+.work-row, .dividend-area {
+  display: grid;
+}
+
+.quotient-row {
+  padding-bottom: 0.12em;
+  justify-self: stretch;
+}
+
+.bracket-band {
+  align-items: stretch;
+}
+
+.divisor-area {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding-right: 0.25em;
+}
+
+.dividend-area {
+  border-top: 0.09em solid #101820;
+  border-left: 0.09em solid #101820;
+  border-top-left-radius: 0.22em;
+  padding-top: 0.05em;
+}
+
+.rows {
+  padding-top: 0.22em;
+}
+
+.cell, .digit-input {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: var(--cell);
+  height: var(--cell);
+  text-align: center;
+}
+
+.cell.empty { color: transparent; }
+
+.work-row.line .cell.empty {
+  height: calc(var(--cell) * 0.22);
+}
+
+.line-mark {
+  align-items: start;
+  border-top: 0.08em solid #101820;
+  color: transparent;
+  margin-top: 0.08em;
+  height: calc(var(--cell) * 0.22);
+}
+
+.digit-input {
+  margin: 0;
+  border: 0.08em solid #527bc0;
+  border-radius: 0.18em;
+  outline: none;
+  background: #ffffff;
+  color: #101820;
+  font-weight: 900;
+  box-shadow: 0 0 0 0.08em rgba(82, 123, 192, 0.12);
+}
+
+.digit-input:focus, .digit-input.active {
+  border-color: #123d82;
+  box-shadow: 0 0 0 0.15em rgba(18, 61, 130, 0.2);
+}
+
+.digit-input.correct {
+  border-color: #2f8f46;
+  background: #ecfff1;
+}
+
+.digit-input.wrong {
+  border-color: #d53636;
+  background: #fff0f0;
+}
+
+.feedback {
+  min-height: 1.4rem;
+  color: #584a38;
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 0.92rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+
+.numberpad {
+  display: none;
+}
+
+@media (min-width: 860px) and (orientation: landscape), (min-width: 1024px) {
+  .numberpad {
+    position: fixed;
+    top: 50%;
+    right: max(0.5rem, calc((100vw - 58rem) / 2));
+    z-index: 10;
+    display: grid;
+    grid-template-columns: repeat(3, 3.4rem);
+    gap: 0.55rem;
+    padding: 0.8rem;
+    border: 1px solid #e5d8bb;
+    border-radius: 1.2rem;
+    background: rgba(255, 250, 240, 0.92);
+    box-shadow: 0 0.8rem 2rem rgba(65, 44, 13, 0.13);
+    transform: translateY(-50%);
+  }
+
+  .numberpad button {
+    width: 3.4rem;
+    height: 3.4rem;
+    border: 1px solid #d0bea0;
+    border-radius: 0.85rem;
+    background: #ffffff;
+    color: #243f74;
+    cursor: pointer;
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 1.35rem;
+    font-weight: 900;
+  }
+
+  .numberpad button:active {
+    transform: translateY(1px);
+    background: #eef3ff;
+  }
+
+  .numberpad button:last-child {
+    grid-column: 2;
+  }
+}
+
+@media (max-height: 680px) {
+  :root { --cell: clamp(1.35rem, 8vw, 2.55rem); }
+  .sheet { gap: 0.3rem; }
+  .feedback { font-size: 0.82rem; }
+  .mini { min-height: 1.8rem; }
+}
