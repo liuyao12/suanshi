@@ -1,5 +1,6 @@
 :root {
   --cell: clamp(1.65rem, 9.4vw, 3.25rem);
+  --dot-cell: clamp(0.3rem, 1.6vw, 0.55rem);
   color: #101820;
   background: #f7f0df;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
@@ -148,6 +149,13 @@ button, .digit-input { touch-action: manipulation; }
 
 .cell.empty { color: transparent; }
 
+.decimal-point {
+  width: var(--dot-cell);
+  align-self: end;
+  font-size: 0.58em;
+  transform: translateY(0.08em);
+}
+
 .line-mark {
   align-items: start;
   border-top: 0.08em solid #101820;
@@ -243,7 +251,7 @@ button, .digit-input { touch-action: manipulation; }
 }
 
 @media (max-height: 680px) {
-  :root { --cell: clamp(1.35rem, 8vw, 2.55rem); }
+  :root { --cell: clamp(1.35rem, 8vw, 2.55rem); --dot-cell: clamp(0.24rem, 1.4vw, 0.42rem); }
   .sheet { gap: 0.3rem; }
   .feedback { font-size: 0.82rem; }
   .mini { min-height: 1.8rem; }

@@ -133,6 +133,11 @@ function makeWorkRows(dividend, divisor, allowDecimal = false) {
         const currentRowIndex = rows.length - 1;
         if (seenDecimalRemainders.has(remainder)) {
           const previousRowIndex = seenDecimalRemainders.get(remainder);
+          const previousDigits = rows[previousRowIndex].cells.filter((cell) => cell?.digit !== undefined);
+          const currentDigits = rows[currentRowIndex].cells.filter((cell) => cell?.digit !== undefined);
+          currentDigits.forEach((cell, index) => {
+            if (previousDigits[index]) cell.id = previousDigits[index].id;
+          });
           [previousRowIndex, currentRowIndex].forEach((rowIndex) => {
             rows[rowIndex].kind = 'repeat number';
             rows[rowIndex].cells.forEach((cell) => {
@@ -215,9 +220,16 @@ function cellMarkup(cell, extraClass = '') {
   return `<span class="cell digit${classSuffix}">${cell.digit}</span>`;
 }
 
+function columnTemplate() {
+  return Array.from({ length: state.puzzle.width }, (_, index) => {
+    const isDecimalColumn = state.puzzle.quotientCells[index]?.mark === '.' || state.puzzle.dividendCells[index]?.mark === '.';
+    return isDecimalColumn ? 'var(--dot-cell)' : 'var(--cell)';
+  }).join(' ');
+}
+
 function rowMarkup(cells, className = '') {
   const contents = cells.map((cell) => cellMarkup(cell)).join('');
-  return `<div class="work-row ${className}" style="grid-template-columns: repeat(${state.puzzle.width}, var(--cell));">${contents}</div>`;
+  return `<div class="work-row ${className}" style="grid-template-columns: ${columnTemplate()};">${contents}</div>`;
 }
 
 function render() {
@@ -238,7 +250,7 @@ function render() {
           </div>
           <div class="bracket-band">
             <div class="divisor-area">${puzzle.divisorCells.map(cellMarkup).join('')}</div>
-            <div class="dividend-area" style="grid-template-columns: repeat(${puzzle.width}, var(--cell));">${puzzle.dividendCells.map(cellMarkup).join('')}</div>
+            <div class="dividend-area" style="grid-template-columns: ${columnTemplate()};">${puzzle.dividendCells.map(cellMarkup).join('')}</div>
           </div>
           <div class="work-band">
             <span class="divisor-spacer"></span>
