@@ -10,6 +10,7 @@ const state = {
   status: 'editing',
   puzzle: null,
   expectedDigits: null,
+  activeInputId: null,
 };
 
 const app = document.getElementById('root');
@@ -122,7 +123,8 @@ function inputMarkup(cell) {
   const value = state.answers[cell.id] || '';
   const expected = state.expectedDigits?.get(cell.id);
   const checked = state.status === 'checked' ? (expected !== undefined && value === expected ? ' correct' : ' wrong') : '';
-  return `<input class="digit-input${checked}" data-id="${cell.id}" type="tel" inputmode="numeric" pattern="[0-9]*" maxlength="1" autocomplete="off" enterkeyhint="done" aria-label="${cell.role} digit" value="${value}">`;
+  const active = state.activeInputId === cell.id ? ' active' : '';
+  return `<input class="digit-input${checked}${active}" data-id="${cell.id}" type="tel" inputmode="numeric" pattern="[0-9]*" maxlength="1" autocomplete="off" enterkeyhint="done" aria-label="${cell.role} digit" value="${value}">`;
 }
 
 function cellMarkup(cell, extraClass = '') {
@@ -142,6 +144,7 @@ function render() {
   const puzzle = state.puzzle;
   app.innerHTML = `
     <main class="division-screen">
+      <div class="stage">
       <div class="sheet" aria-label="Full long division puzzle">
         <div class="topbar">
           ${Object.entries(DIFFICULTIES).map(([key, setting]) => `<button class="mini ${key === state.difficulty ? 'active' : ''}" data-difficulty="${key}" type="button">${setting.label}</button>`).join('')}
@@ -162,6 +165,10 @@ function render() {
         </section>
         <div class="feedback" aria-live="polite">${state.message || 'Fill in every box. It checks automatically.'}</div>
       </div>
+      <aside class="numberpad" aria-label="Number pad">
+        ${[1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map((digit) => `<button type="button" data-pad="${digit}">${digit}</button>`).join('')}
+      </aside>
+      </div>
     </main>`;
 }
 
@@ -170,6 +177,7 @@ function newPuzzle(difficulty = state.difficulty) {
   state.answers = {};
   state.status = 'editing';
   state.expectedDigits = null;
+  state.activeInputId = null;
   state.message = 'Fill in every box. It checks automatically.';
   state.puzzle = makePuzzle(difficulty);
   render();
@@ -250,25 +258,39 @@ function allRenderedDigitsMatch(expected) {
 
 app.addEventListener('click', (event) => {
   const difficulty = event.target.closest('[data-difficulty]')?.dataset.difficulty;
+  const padDigit = event.target.closest('[data-pad]')?.dataset.pad;
   if (difficulty) newPuzzle(difficulty);
+  if (padDigit !== undefined && state.activeInputId) {
+    fillDigit(state.activeInputId, padDigit);
+    state.activeInputId = null;
+    render();
+  }
 });
+
+function fillDigit(id, digit) {
+  state.answers[id] = String(digit).replace(/\D/g, '').slice(-1);
+  state.status = 'editing';
+  state.expectedDigits = null;
+  state.message = 'Fill in every box. It checks automatically.';
+  return checkAnswer();
+}
 
 app.addEventListener('input', (event) => {
   if (!event.target.matches('.digit-input')) return;
   const id = event.target.dataset.id;
-  state.answers[id] = event.target.value.replace(/\D/g, '').slice(-1);
+  fillDigit(id, event.target.value);
   event.target.value = state.answers[id];
-  state.status = 'editing';
-  state.expectedDigits = null;
-  state.message = 'Fill in every box. It checks automatically.';
   if (state.answers[id]) {
+    state.activeInputId = null;
     event.target.blur();
   }
-  checkAnswer();
 });
 
 app.addEventListener('focusin', (event) => {
   if (!event.target.matches('.digit-input')) return;
+  state.activeInputId = event.target.dataset.id;
+  document.querySelectorAll('.digit-input.active').forEach((input) => input.classList.remove('active'));
+  event.target.classList.add('active');
   event.target.select();
 });
 
