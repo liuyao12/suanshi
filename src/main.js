@@ -20,6 +20,11 @@ function usesCustomNumberpad() {
   return window.matchMedia?.(NUMBERPAD_MEDIA).matches ?? false;
 }
 
+function shouldSuppressDeviceKeyboard() {
+  const touchKeyboardLikely = window.matchMedia?.('(hover: none), (pointer: coarse)').matches || navigator.maxTouchPoints > 0;
+  return usesCustomNumberpad() && touchKeyboardLikely;
+}
+
 function randomInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
@@ -129,7 +134,7 @@ function inputMarkup(cell) {
   const expected = state.expectedDigits?.get(cell.id);
   const checked = state.status === 'checked' ? (expected !== undefined && value === expected ? ' correct' : ' wrong') : '';
   const active = state.activeInputId === cell.id ? ' active' : '';
-  const readonly = usesCustomNumberpad() ? ' readonly' : '';
+  const readonly = shouldSuppressDeviceKeyboard() ? ' readonly' : '';
   return `<input class="digit-input${checked}${active}" data-id="${cell.id}" type="tel" inputmode="numeric" pattern="[0-9]*" maxlength="1" autocomplete="off" enterkeyhint="done" aria-label="${cell.role} digit" value="${value}"${readonly}>`;
 }
 
