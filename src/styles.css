@@ -203,13 +203,11 @@ button, .digit-input { touch-action: manipulation; }
 }
 
 @media (min-width: 860px) and (orientation: landscape), (min-width: 1024px) {
-  .stage {
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: center;
-    gap: clamp(0.75rem, 2vw, 1.5rem);
-  }
-
   .numberpad {
+    position: fixed;
+    top: 50%;
+    right: clamp(0.75rem, 2vw, 1.5rem);
+    z-index: 10;
     display: grid;
     grid-template-columns: repeat(3, 3.4rem);
     gap: 0.55rem;
@@ -218,6 +216,7 @@ button, .digit-input { touch-action: manipulation; }
     border-radius: 1.2rem;
     background: rgba(255, 250, 240, 0.92);
     box-shadow: 0 0.8rem 2rem rgba(65, 44, 13, 0.13);
+    transform: translateY(-50%);
   }
 
   .numberpad button {
