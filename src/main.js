@@ -14,6 +14,11 @@ const state = {
 };
 
 const app = document.getElementById('root');
+const NUMBERPAD_MEDIA = '(min-width: 860px) and (orientation: landscape), (min-width: 1024px)';
+
+function usesCustomNumberpad() {
+  return window.matchMedia?.(NUMBERPAD_MEDIA).matches ?? false;
+}
 
 function randomInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -124,7 +129,8 @@ function inputMarkup(cell) {
   const expected = state.expectedDigits?.get(cell.id);
   const checked = state.status === 'checked' ? (expected !== undefined && value === expected ? ' correct' : ' wrong') : '';
   const active = state.activeInputId === cell.id ? ' active' : '';
-  return `<input class="digit-input${checked}${active}" data-id="${cell.id}" type="tel" inputmode="numeric" pattern="[0-9]*" maxlength="1" autocomplete="off" enterkeyhint="done" aria-label="${cell.role} digit" value="${value}">`;
+  const readonly = usesCustomNumberpad() ? ' readonly' : '';
+  return `<input class="digit-input${checked}${active}" data-id="${cell.id}" type="tel" inputmode="numeric" pattern="[0-9]*" maxlength="1" autocomplete="off" enterkeyhint="done" aria-label="${cell.role} digit" value="${value}"${readonly}>`;
 }
 
 function cellMarkup(cell, extraClass = '') {
@@ -292,6 +298,10 @@ app.addEventListener('focusin', (event) => {
   document.querySelectorAll('.digit-input.active').forEach((input) => input.classList.remove('active'));
   event.target.classList.add('active');
   event.target.select();
+});
+
+window.matchMedia?.(NUMBERPAD_MEDIA).addEventListener?.('change', () => {
+  if (state.puzzle) render();
 });
 
 newPuzzle();
