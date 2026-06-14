@@ -148,12 +148,16 @@ button, .digit-input { touch-action: manipulation; }
 
 .cell.empty { color: transparent; }
 
+.work-row.line .cell.empty {
+  height: calc(var(--cell) * 0.22);
+}
+
 .line-mark {
   align-items: start;
   border-top: 0.08em solid #101820;
   color: transparent;
-  margin-top: 0.24em;
-  height: calc(var(--cell) * 0.45);
+  margin-top: 0.08em;
+  height: calc(var(--cell) * 0.22);
 }
 
 .digit-input {
@@ -200,7 +204,7 @@ button, .digit-input { touch-action: manipulation; }
   .numberpad {
     position: fixed;
     top: 50%;
-    right: clamp(0.75rem, 2vw, 1.5rem);
+    right: max(0.5rem, calc((100vw - 58rem) / 2));
     z-index: 10;
     display: grid;
     grid-template-columns: repeat(3, 3.4rem);
