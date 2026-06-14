@@ -29,64 +29,129 @@ function randomInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
+function gcd(a, b) {
+  return b === 0 ? Math.abs(a) : gcd(b, a % b);
+}
+
+function hasRepeatingDecimal(divisor, remainder) {
+  let reduced = divisor / gcd(divisor, remainder);
+  while (reduced % 2 === 0) reduced /= 2;
+  while (reduced % 5 === 0) reduced /= 5;
+  return reduced !== 1;
+}
+
 function token(id, digit, role) {
   return { id, digit: String(digit), role };
 }
 
 function makeWorkRows(dividend, divisor) {
-  const digits = String(dividend).split('').map(Number);
-  const width = digits.length;
-  const quotientCells = Array(width).fill(null);
+  const dividendDigits = String(dividend).split('').map(Number);
+  const quotientCells = [];
+  const dividendCells = String(dividend).split('').map((digit, index) => token(`dividend-${index}`, digit, 'dividend'));
   const rows = [];
+  const seenDecimalRemainders = new Map();
   let carried = 0;
   let started = false;
+  let column = -1;
 
-  digits.forEach((digit, column) => {
+  function ensureColumn() {
+    column += 1;
+    rows.forEach((row) => row.cells.push(null));
+    quotientCells.push(null);
+    return column;
+  }
+
+  function addStep(partial, qDigit, product, remainder, currentColumn, nextDigit, repeating) {
+    const width = quotientCells.length;
+    const partialText = String(partial);
+    const productText = String(product);
+    const startColumn = Math.max(0, currentColumn - partialText.length + 1);
+    const productStart = Math.max(0, currentColumn - productText.length + 1);
+
+    const productRow = Array(width).fill(null);
+    productText.split('').forEach((value, index) => {
+      productRow[productStart + index] = token(`product-${currentColumn}-${index}`, value, 'product');
+    });
+    rows.push({ kind: 'product', cells: productRow });
+
+    const lineRow = Array(width).fill(null);
+    for (let index = Math.min(startColumn, productStart); index <= currentColumn; index += 1) {
+      lineRow[index] = { id: `line-${currentColumn}-${index}`, mark: '−' };
+    }
+    rows.push({ kind: 'line', cells: lineRow });
+
+    const remainderText = nextDigit === undefined ? String(remainder) : `${remainder === 0 ? '' : remainder}${nextDigit}`;
+    const remainderEndColumn = nextDigit === undefined ? currentColumn : currentColumn + 1;
+    const remainderStart = Math.max(0, remainderEndColumn - remainderText.length + 1);
+    const remainderRow = Array(width).fill(null);
+    while (remainderRow.length <= remainderEndColumn) remainderRow.push(null);
+    remainderText.split('').forEach((value, index) => {
+      const isBroughtDown = nextDigit !== undefined && index === remainderText.length - 1;
+      const role = isBroughtDown ? 'brought-down dividend' : repeating ? 'repeating remainder' : 'partial remainder';
+      const cell = token(`remainder-${currentColumn}-${index}`, value, role);
+      if (repeating && !isBroughtDown) cell.repeating = true;
+      remainderRow[remainderStart + index] = cell;
+    });
+    rows.push({ kind: repeating ? 'repeat number' : 'number', cells: remainderRow.slice(0, quotientCells.length) });
+  }
+
+  dividendDigits.forEach((digit, digitIndex) => {
+    const currentColumn = ensureColumn();
     const partial = carried * 10 + digit;
     const qDigit = Math.floor(partial / divisor);
-
-    if (!started && qDigit === 0 && column < width - 1) {
+    if (!started && qDigit === 0 && digitIndex < dividendDigits.length - 1) {
       carried = partial;
       return;
     }
 
     started = true;
-    quotientCells[column] = token(`q-${column}`, qDigit, 'quotient');
+    quotientCells[currentColumn] = token(`q-${currentColumn}`, qDigit, 'quotient');
     const product = qDigit * divisor;
     const remainder = partial - product;
-    const partialText = String(partial);
-    const productText = String(product);
-    const remainderText = String(remainder);
-    const startColumn = Math.max(0, column - partialText.length + 1);
-    const productStart = Math.max(0, column - productText.length + 1);
-
-    const productRow = Array(width).fill(null);
-    productText.split('').forEach((value, index) => {
-      productRow[productStart + index] = token(`product-${column}-${index}`, value, 'product');
-    });
-    rows.push({ kind: 'product', cells: productRow });
-
-    const lineRow = Array(width).fill(null);
-    for (let index = Math.min(startColumn, productStart); index <= column; index += 1) {
-      lineRow[index] = { id: `line-${column}-${index}`, mark: '−' };
-    }
-    rows.push({ kind: 'line', cells: lineRow });
-
-    const hasNextDigit = column < width - 1;
-    const remainderWithBringDown = hasNextDigit ? `${remainder === 0 ? '' : remainder}${digits[column + 1]}` : remainderText;
-    const remainderEndColumn = hasNextDigit ? column + 1 : column;
-    const remainderWithBringDownStart = Math.max(0, remainderEndColumn - remainderWithBringDown.length + 1);
-    const remainderRow = Array(width).fill(null);
-    remainderWithBringDown.split('').forEach((value, index) => {
-      const role = hasNextDigit && index === remainderWithBringDown.length - 1 ? 'brought-down dividend' : column === width - 1 ? 'final remainder' : 'partial remainder';
-      remainderRow[remainderWithBringDownStart + index] = token(`remainder-${column}-${index}`, value, role);
-    });
-    rows.push({ kind: 'number', cells: remainderRow });
-
+    const nextDigit = digitIndex < dividendDigits.length - 1 ? dividendDigits[digitIndex + 1] : undefined;
+    addStep(partial, qDigit, product, remainder, currentColumn, nextDigit, false);
     carried = remainder;
   });
 
-  return { quotientCells, rows };
+  if (carried !== 0) {
+    const decimalColumn = ensureColumn();
+    quotientCells[decimalColumn] = { id: 'q-decimal', mark: '.', role: 'decimal point' };
+    dividendCells.push({ id: 'dividend-decimal', mark: '.', role: 'decimal point' });
+
+    for (let guard = 0; guard < 64 && carried !== 0; guard += 1) {
+      if (seenDecimalRemainders.has(carried)) {
+        const repeatColumn = quotientCells.length - 1;
+        const repeatStart = seenDecimalRemainders.get(carried);
+        quotientCells.forEach((cell, index) => {
+          if (index >= repeatStart && cell?.digit !== undefined) cell.repeating = true;
+        });
+        const repeatRow = Array(quotientCells.length).fill(null);
+        const repeatText = String(carried);
+        const repeatStartColumn = Math.max(0, repeatColumn - repeatText.length + 1);
+        repeatText.split('').forEach((value, index) => {
+          const cell = token(`repeat-${repeatColumn}-${index}`, value, 'repeating remainder');
+          cell.repeating = true;
+          repeatRow[repeatStartColumn + index] = cell;
+        });
+        rows.push({ kind: 'repeat number', cells: repeatRow });
+        break;
+      }
+
+      const decimalDigitColumn = ensureColumn();
+      seenDecimalRemainders.set(carried, decimalDigitColumn);
+      dividendCells.push(token(`dividend-zero-${guard}`, 0, 'added decimal zero'));
+      const partial = carried * 10;
+      const qDigit = Math.floor(partial / divisor);
+      quotientCells[decimalDigitColumn] = token(`q-${decimalDigitColumn}`, qDigit, 'decimal quotient');
+      const product = qDigit * divisor;
+      const remainder = partial - product;
+      const nextDigit = remainder === 0 ? undefined : 0;
+      addStep(partial, qDigit, product, remainder, decimalDigitColumn, nextDigit, false);
+      carried = remainder;
+    }
+  }
+
+  return { quotientCells, dividendCells, rows, width: quotientCells.length };
 }
 
 function pickBlanks(puzzle, rate) {
@@ -107,11 +172,15 @@ function pickBlanks(puzzle, rate) {
 
 function makePuzzle(difficultyKey) {
   const settings = DIFFICULTIES[difficultyKey];
-  const divisor = randomInt(settings.minDivisor, settings.maxDivisor);
-  const quotient = randomInt(settings.minQuotient, settings.maxQuotient);
-  const remainder = randomInt(0, Math.min(divisor - 1, settings.maxRemainder));
+  let divisor = randomInt(settings.minDivisor, settings.maxDivisor);
+  let quotient = randomInt(settings.minQuotient, settings.maxQuotient);
+  let remainder = randomInt(1, Math.min(divisor - 1, settings.maxRemainder));
+  for (let attempt = 0; attempt < 100 && !hasRepeatingDecimal(divisor, remainder); attempt += 1) {
+    divisor = randomInt(settings.minDivisor, settings.maxDivisor);
+    quotient = randomInt(settings.minQuotient, settings.maxQuotient);
+    remainder = randomInt(1, Math.min(divisor - 1, settings.maxRemainder));
+  }
   const dividend = divisor * quotient + remainder;
-  const dividendWidth = String(dividend).length;
   const work = makeWorkRows(dividend, divisor);
   const puzzle = {
     divisor,
@@ -119,10 +188,10 @@ function makePuzzle(difficultyKey) {
     quotient,
     remainder,
     divisorCells: String(divisor).split('').map((digit, index) => token(`divisor-${index}`, digit, 'divisor')),
-    dividendCells: String(dividend).split('').map((digit, index) => token(`dividend-${index}`, digit, 'dividend')),
+    dividendCells: work.dividendCells,
     quotientCells: work.quotientCells,
     rows: work.rows,
-    width: dividendWidth,
+    width: work.width,
     blanks: new Set(),
   };
   puzzle.blanks = pickBlanks(puzzle, settings.blankRate);
@@ -139,8 +208,10 @@ function inputMarkup(cell) {
 }
 
 function cellMarkup(cell, extraClass = '') {
-  const classSuffix = extraClass ? ` ${extraClass}` : '';
+  const repeatingClass = cell?.repeating ? ' repeating' : '';
+  const classSuffix = `${extraClass ? ` ${extraClass}` : ''}${repeatingClass}`;
   if (!cell) return '<span class="cell empty"></span>';
+  if (cell.mark === '.') return `<span class="cell digit decimal-point${classSuffix}">.</span>`;
   if (cell.mark) return `<span class="cell line-mark${classSuffix}">${cell.mark}</span>`;
   if (state.puzzle.blanks.has(cell.id)) return inputMarkup(cell).replace('digit-input', `digit-input${classSuffix}`);
   return `<span class="cell digit${classSuffix}">${cell.digit}</span>`;
@@ -158,7 +229,9 @@ function render() {
       <div class="stage">
       <div class="sheet" aria-label="Full long division puzzle">
         <div class="topbar">
-          ${Object.entries(DIFFICULTIES).map(([key, setting]) => `<button class="mini ${key === state.difficulty ? 'active' : ''}" data-difficulty="${key}" type="button">${setting.label}</button>`).join('')}
+          <div class="segmented" aria-label="Difficulty">
+            ${Object.entries(DIFFICULTIES).map(([key, setting]) => `<button class="mini ${key === state.difficulty ? 'active' : ''}" data-difficulty="${key}" type="button">${setting.label}</button>`).join('')}
+          </div>
         </div>
         <section class="division-problem">
           <div class="quotient-band">
@@ -222,8 +295,9 @@ function valueForCell(cell) {
   return state.puzzle.blanks.has(cell.id) ? state.answers[cell.id] || '' : cell.digit;
 }
 
-function numberFromCells(cells) {
-  const text = cells.map(valueForCell).join('').replace(/^0+(?=\d)/, '');
+function numberFromCells(cells, roles = null) {
+  const selected = roles ? cells.filter((cell) => roles.has(cell?.role)) : cells;
+  const text = selected.map(valueForCell).join('').replace(/^0+(?=\d)/, '');
   return text === '' ? NaN : Number(text);
 }
 
@@ -241,15 +315,13 @@ function collectExpectedDigits(puzzle) {
 
 function expectedDigitsFromFilledProblem() {
   const divisor = numberFromCells(state.puzzle.divisorCells);
-  const dividend = numberFromCells(state.puzzle.dividendCells);
-  const quotient = numberFromCells(state.puzzle.quotientCells);
-  if (!Number.isInteger(divisor) || !Number.isInteger(dividend) || !Number.isInteger(quotient) || divisor <= 0) return null;
-  if (Math.floor(dividend / divisor) !== quotient) return null;
+  const dividend = numberFromCells(state.puzzle.dividendCells, new Set(['dividend']));
+  if (!Number.isInteger(divisor) || !Number.isInteger(dividend) || divisor <= 0) return null;
 
   const expectedWork = makeWorkRows(dividend, divisor);
   const expectedPuzzle = {
     divisorCells: String(divisor).split('').map((digit, index) => token(`divisor-${index}`, digit, 'divisor')),
-    dividendCells: String(dividend).split('').map((digit, index) => token(`dividend-${index}`, digit, 'dividend')),
+    dividendCells: expectedWork.dividendCells,
     quotientCells: expectedWork.quotientCells,
     rows: expectedWork.rows,
   };
