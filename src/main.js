@@ -210,7 +210,7 @@ function inputMarkup(cell) {
   const expected = state.expectedDigits?.get(cell.id);
   const checked = state.status === 'checked' ? (expected !== undefined && value === expected ? ' correct' : ' wrong') : '';
   const active = state.activeInputId === cell.id ? ' active' : '';
-  const readonly = shouldSuppressDeviceKeyboard() ? ' readonly' : '';
+  const readonly = ' readonly';
   const letterCode = letterCodeClassForCell(cell);
   const groupLetter = letterForDigit(cell.digit);
   const placeholder = letterCode ? ` placeholder="${groupLetter}" title="${groupLetter} represents one digit"` : '';
@@ -456,7 +456,10 @@ app.addEventListener('input', (event) => {
   if (!event.target.matches('.digit-input')) return;
   const id = event.target.dataset.id;
   fillDigit(id, event.target.value);
-  event.target.value = state.answers[id];
+  render();
+  const updatedInput = document.querySelector(`[data-id="${id}"]`);
+  if (updatedInput) updatedInput.value = state.answers[id] || '';
+  event.target.value = state.answers[id] || '';
   if (state.answers[id]) {
     state.activeInputId = null;
     event.target.blur();
