@@ -110,12 +110,10 @@ function pickBlanks(puzzle, blankCount) {
 }
 
 
-function pickLetterBlanks(puzzle, letterGroupCount) {
-  const candidatesByDigit = new Map();
+function pickLetterBlanks(puzzle) {
+  const blanks = new Set();
   const collect = (cell) => {
-    if (cell?.digit === undefined) return;
-    if (!candidatesByDigit.has(cell.digit)) candidatesByDigit.set(cell.digit, []);
-    candidatesByDigit.get(cell.digit).push(cell.id);
+    if (cell?.digit !== undefined) blanks.add(cell.id);
   };
 
   if (puzzle.layout === 'arithmetic') {
@@ -123,15 +121,13 @@ function pickLetterBlanks(puzzle, letterGroupCount) {
     puzzle.rightCells.forEach(collect);
     puzzle.resultCells.forEach(collect);
   } else {
+    puzzle.divisorCells.forEach(collect);
+    puzzle.dividendCells.forEach(collect);
     puzzle.quotientCells.forEach(collect);
     puzzle.rows.forEach((row) => row.cells.forEach(collect));
   }
 
-  const rankedDigits = [...candidatesByDigit.entries()]
-    .sort((left, right) => right[1].length - left[1].length || Math.random() - 0.5)
-    .map(([digit]) => digit);
-  const selectedDigits = rankedDigits.slice(0, Math.min(letterGroupCount, rankedDigits.length));
-  return new Set(selectedDigits.flatMap((digit) => candidatesByDigit.get(digit)));
+  return blanks;
 }
 
 function arithmeticToken(prefix, value) {
@@ -191,11 +187,7 @@ function makePuzzle(difficultyKey, problemType = 'classic') {
   const puzzle = problemType === 'letters' && Math.random() < 0.66
     ? makeArithmeticPuzzle(settings)
     : makeDivisionPuzzle(settings);
-  puzzle.blanks = puzzle.layout === 'arithmetic'
-    ? pickLetterBlanks(puzzle, settings.letterGroupCount)
-    : problemType === 'letters'
-      ? pickLetterBlanks(puzzle, settings.letterGroupCount)
-      : pickBlanks(puzzle, settings.blankCount);
+  puzzle.blanks = problemType === 'letters' ? pickLetterBlanks(puzzle) : pickBlanks(puzzle, settings.blankCount);
   puzzle.blanksById = new Map();
   collectExpectedDigits(puzzle).forEach((digit, id) => {
     if (puzzle.blanks.has(id)) puzzle.blanksById.set(id, digit);
@@ -209,8 +201,8 @@ function letterForDigit(digit) {
   return DIGIT_LETTERS[Number(digit)] ?? '';
 }
 
-function digitGroupClassForCell(cell) {
-  return state.problemType === 'letters' && state.puzzle.blanks.has(cell.id) ? ` digit-code-${cell.digit}` : '';
+function letterCodeClassForCell(cell) {
+  return state.problemType === 'letters' && state.puzzle.blanks.has(cell.id) ? ' letter-code' : '';
 }
 
 function inputMarkup(cell) {
@@ -219,10 +211,10 @@ function inputMarkup(cell) {
   const checked = state.status === 'checked' ? (expected !== undefined && value === expected ? ' correct' : ' wrong') : '';
   const active = state.activeInputId === cell.id ? ' active' : '';
   const readonly = shouldSuppressDeviceKeyboard() ? ' readonly' : '';
-  const digitGroup = digitGroupClassForCell(cell);
+  const letterCode = letterCodeClassForCell(cell);
   const groupLetter = letterForDigit(cell.digit);
-  const placeholder = digitGroup ? ` placeholder="${groupLetter}" title="${groupLetter} represents one digit"` : '';
-  return `<input class="digit-input${checked}${active}${digitGroup}" data-id="${cell.id}" data-digit-letter="${groupLetter}" type="tel" inputmode="numeric" pattern="[0-9]*" maxlength="1" autocomplete="off" enterkeyhint="done" aria-label="${digitGroup ? `${groupLetter} coded ` : ''}${cell.role} digit" value="${value}"${placeholder}${readonly}>`;
+  const placeholder = letterCode ? ` placeholder="${groupLetter}" title="${groupLetter} represents one digit"` : '';
+  return `<input class="digit-input${checked}${active}${letterCode}" data-id="${cell.id}" data-digit-letter="${groupLetter}" type="tel" inputmode="numeric" pattern="[0-9]*" maxlength="1" autocomplete="off" enterkeyhint="done" aria-label="${letterCode ? `${groupLetter} coded ` : ''}${cell.role} digit" value="${value}"${placeholder}${readonly}>`;
 }
 
 function cellMarkup(cell, extraClass = '') {
@@ -283,9 +275,12 @@ function render() {
         </div>
         ${puzzle.layout === 'arithmetic' ? arithmeticMarkup(puzzle) : divisionMarkup(puzzle)}
         <div class="feedback" aria-live="polite">${state.message || 'Fill in every box. It checks automatically.'}</div>
+        <div class="bottom-actions">
+          <button class="reset-button" data-reset type="button">Reset</button>
+        </div>
       </div>
       <aside class="numberpad" aria-label="Number pad">
-        ${[1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map((digit) => `<button type="button" data-pad="${digit}" ${isDigitUnavailable(digit) ? 'disabled aria-disabled="true"' : ''}>${digit}</button>`).join('')}
+        ${[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((digit) => `<button type="button" data-pad="${digit}" ${isDigitUnavailable(digit) ? 'disabled aria-disabled="true"' : ''}>${digit}</button>`).join('')}
       </aside>
       </div>
     </main>`;
@@ -399,8 +394,10 @@ function allRenderedDigitsMatch(expected) {
 app.addEventListener('click', (event) => {
   const difficulty = event.target.closest('[data-difficulty]')?.dataset.difficulty;
   const type = event.target.closest('[data-type]')?.dataset.type;
+  const reset = event.target.closest('[data-reset]');
   const padButton = event.target.closest('[data-pad]');
   const padDigit = padButton?.dataset.pad;
+  if (reset) resetPuzzle();
   if (type) newPuzzleWithType(type);
   if (difficulty) newPuzzle(difficulty);
   if (padDigit !== undefined && state.activeInputId && !padButton.disabled) {
@@ -412,13 +409,22 @@ app.addEventListener('click', (event) => {
 
 function helpMessage() {
   return state.problemType === 'letters'
-    ? 'Use the letters to identify each digit. Same letters share a digit.'
+    ? 'Use the letters to identify each digit. All digits in this puzzle are shown as letters.'
     : 'Fill in every box. It checks automatically.';
 }
 
 function newPuzzleWithType(type) {
   state.problemType = type;
   newPuzzle();
+}
+
+function resetPuzzle() {
+  state.answers = {};
+  state.status = 'editing';
+  state.expectedDigits = null;
+  state.activeInputId = null;
+  state.message = helpMessage();
+  render();
 }
 
 function fillDigit(id, digit) {
