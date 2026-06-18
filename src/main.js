@@ -327,6 +327,7 @@ function render() {
     <main class="division-screen">
       <div class="stage">
       <div class="sheet" aria-label="Arithmetic puzzle">
+        <button class="reset-button top-reset reset-icon" data-reset type="button" aria-label="Reset puzzle" title="Reset puzzle">↻</button>
         <div class="topbar">
           <div class="control-row mode-row">
             <div class="segmented mode-segmented" aria-label="Problem type">
@@ -338,12 +339,11 @@ function render() {
               ${Object.entries(DIFFICULTIES).map(([key, setting]) => `<button class="mini ${key === state.difficulty ? 'active' : ''}" data-difficulty="${key}" type="button">${setting.label}</button>`).join('')}
             </div>
           </div>
-          <button class="reset-button reset-icon" data-reset type="button" aria-label="Reset puzzle" title="Reset puzzle">↻</button>
         </div>
         ${puzzle.layout === 'arithmetic' ? arithmeticMarkup(puzzle) : divisionMarkup(puzzle)}
       </div>
       <aside class="numberpad" aria-label="Number pad">
-        ${[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((digit) => `<button type="button" data-pad="${digit}" ${isDigitUnavailable(digit) ? 'disabled aria-disabled="true"' : ''}>${digit}</button>`).join('')}<button class="erase-key" type="button" data-erase aria-label="Erase" title="Erase">⌫</button>
+        ${[0, 1, 2, 3, 4].map((digit) => `<button type="button" data-pad="${digit}" ${isDigitUnavailable(digit) ? 'disabled aria-disabled="true"' : ''}>${digit}</button>`).join('')}<button class="erase-key" type="button" data-erase aria-label="Erase" title="Erase">🧽</button>${[5, 6, 7, 8, 9].map((digit) => `<button type="button" data-pad="${digit}" ${isDigitUnavailable(digit) ? 'disabled aria-disabled="true"' : ''}>${digit}</button>`).join('')}
       </aside>
       </div>
     </main>`;

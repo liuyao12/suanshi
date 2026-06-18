@@ -584,3 +584,35 @@ button, .digit-input { touch-action: manipulation; }
 .erase-key {
   color: #9d2626;
 }
+
+.topbar {
+  padding-right: 3rem;
+  padding-left: 3rem;
+}
+
+.top-reset {
+  position: absolute;
+  top: clamp(0.45rem, 2vw, 0.8rem);
+  right: clamp(0.45rem, 2vw, 0.8rem);
+}
+
+.division-screen {
+  padding-bottom: max(8.5rem, calc(env(safe-area-inset-bottom) + 7.8rem));
+}
+
+.numberpad {
+  grid-template-columns: repeat(6, minmax(2.2rem, 1fr));
+  width: min(calc(100vw - 0.7rem), 28rem);
+  max-height: calc(7.6rem + env(safe-area-inset-bottom));
+}
+
+.numberpad button {
+  height: clamp(2rem, 7vw, 2.8rem);
+}
+
+.erase-key {
+  grid-column: 6;
+  grid-row: 1 / span 2;
+  height: 100%;
+  font-size: clamp(1rem, 3.5vw, 1.3rem);
+}
