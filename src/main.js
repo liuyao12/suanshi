@@ -327,7 +327,6 @@ function render() {
     <main class="division-screen">
       <div class="stage">
       <div class="sheet" aria-label="Arithmetic puzzle">
-        <button class="reset-button top-reset reset-icon" data-reset type="button" aria-label="Reset puzzle" title="Reset puzzle">↻</button>
         <div class="topbar">
           <div class="control-row mode-row">
             <div class="segmented mode-segmented" aria-label="Problem type">
@@ -339,6 +338,7 @@ function render() {
               ${Object.entries(DIFFICULTIES).map(([key, setting]) => `<button class="mini ${key === state.difficulty ? 'active' : ''}" data-difficulty="${key}" type="button">${setting.label}</button>`).join('')}
             </div>
           </div>
+          <button class="reset-button reset-icon reset-tall" data-reset type="button" aria-label="Reset puzzle" title="Reset puzzle">↻</button>
         </div>
         ${puzzle.layout === 'arithmetic' ? arithmeticMarkup(puzzle) : divisionMarkup(puzzle)}
       </div>

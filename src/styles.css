@@ -616,3 +616,30 @@ button, .digit-input { touch-action: manipulation; }
   height: 100%;
   font-size: clamp(1rem, 3.5vw, 1.3rem);
 }
+
+.topbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  justify-items: center;
+  align-items: stretch;
+  padding-right: 0;
+  padding-left: 0;
+}
+
+.mode-row,
+.level-row {
+  grid-column: 1;
+}
+
+.mode-row { grid-row: 1; }
+.level-row { grid-row: 2; }
+
+.reset-tall {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: stretch;
+  width: 2.8rem;
+  min-height: 100%;
+  margin-left: 0.45rem;
+  font-size: 1.35rem;
+}
