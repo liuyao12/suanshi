@@ -1,7 +1,19 @@
 const DIFFICULTIES = {
-  easy: { label: 'Easy', minDivisor: 2, maxDivisor: 9, minQuotient: 12, maxQuotient: 99, maxRemainder: 8, blankCount: 5, letterGroupCount: 2 },
-  medium: { label: 'Medium', minDivisor: 3, maxDivisor: 24, minQuotient: 24, maxQuotient: 399, maxRemainder: 23, blankCount: 9, letterGroupCount: 3 },
-  hard: { label: 'Hard', minDivisor: 11, maxDivisor: 98, minQuotient: 101, maxQuotient: 999, maxRemainder: 97, blankCount: 14, letterGroupCount: 4 },
+  easy: {
+    label: 'Easy',
+    minDivisor: 2, maxDivisor: 9, minQuotient: 12, maxQuotient: 99, maxRemainder: 8, blankCount: 5,
+    arithmetic: { minOperand: 12, maxOperand: 99, minAddend: 12, maxAddend: 99, minMultiplier: 2, maxMultiplier: 9, operations: ['addition', 'multiplication'] },
+  },
+  medium: {
+    label: 'Medium',
+    minDivisor: 3, maxDivisor: 24, minQuotient: 24, maxQuotient: 399, maxRemainder: 23, blankCount: 9,
+    arithmetic: { minOperand: 101, maxOperand: 999, minAddend: 101, maxAddend: 999, minMultiplier: 12, maxMultiplier: 49, operations: ['addition', 'multiplication'] },
+  },
+  hard: {
+    label: 'Hard',
+    minDivisor: 11, maxDivisor: 98, minQuotient: 200, maxQuotient: 1999, maxRemainder: 97, blankCount: 14,
+    arithmetic: { minOperand: 200, maxOperand: 1999, minAddend: 101, maxAddend: 999, minMultiplier: 12, maxMultiplier: 98, operations: ['multiplication', 'addition', 'multiplication'] },
+  },
 };
 
 const state = {
@@ -156,13 +168,12 @@ function padCells(cells, width) {
 }
 
 function makeArithmeticPuzzle(settings) {
-  const operation = Math.random() < 0.5 ? 'addition' : 'multiplication';
-  const maxOperand = settings.label === 'Easy' ? 99 : settings.label === 'Medium' ? 399 : 999;
-  const minOperand = settings.label === 'Easy' ? 12 : settings.label === 'Medium' ? 24 : 101;
-  const left = randomInt(minOperand, maxOperand);
+  const arithmetic = settings.arithmetic;
+  const operation = arithmetic.operations[randomInt(0, arithmetic.operations.length - 1)];
+  const left = randomInt(arithmetic.minOperand, arithmetic.maxOperand);
   const right = operation === 'addition'
-    ? randomInt(minOperand, maxOperand)
-    : randomInt(settings.label === 'Easy' ? 2 : 6, settings.label === 'Medium' ? 12 : 24);
+    ? randomInt(arithmetic.minAddend, arithmetic.maxAddend)
+    : randomInt(arithmetic.minMultiplier, arithmetic.maxMultiplier);
   const result = operation === 'addition' ? left + right : left * right;
   const partials = operation === 'multiplication'
     ? String(right).split('').reverse().map((digit, shift) => ({ value: left * Number(digit), shift }))
@@ -258,8 +269,9 @@ function inputMarkup(cell) {
   const readonly = ' readonly';
   const letterCode = letterCodeClassForCell(cell);
   const groupLetter = letterForDigit(cell.digit);
-  const placeholder = letterCode ? ` placeholder="${groupLetter}" title="${groupLetter} represents one digit"` : '';
-  return `<input class="digit-input${checked}${active}${letterCode}" data-id="${cell.id}" data-digit-letter="${groupLetter}" type="tel" inputmode="numeric" pattern="[0-9]*" maxlength="1" autocomplete="off" enterkeyhint="done" aria-label="${letterCode ? `${groupLetter} coded ` : ''}${cell.role} digit" value="${value}"${placeholder}${readonly}>`;
+  const displayValue = value || (letterCode ? groupLetter : '');
+  const title = letterCode ? ` title="${groupLetter} represents one digit"` : '';
+  return `<input class="digit-input${checked}${active}${letterCode}" data-id="${cell.id}" data-digit-letter="${groupLetter}" type="tel" inputmode="numeric" pattern="[0-9]*" maxlength="1" autocomplete="off" enterkeyhint="done" aria-label="${letterCode ? `${groupLetter} coded ` : ''}${cell.role} digit" value="${displayValue}"${title}${readonly}>`;
 }
 
 function cellMarkup(cell, extraClass = '') {

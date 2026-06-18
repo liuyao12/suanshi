@@ -555,3 +555,14 @@ button, .digit-input { touch-action: manipulation; }
 .dividend-area::before {
   content: none;
 }
+
+.letter-code {
+  font-size: 0.9em;
+  line-height: 1;
+  text-align: center;
+}
+
+.dividend-area {
+  margin-left: calc(var(--cell) * -0.2);
+  padding-left: calc(var(--cell) * 0.2);
+}
