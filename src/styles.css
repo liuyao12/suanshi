@@ -532,3 +532,26 @@ button, .digit-input { touch-action: manipulation; }
 .partial-row {
   opacity: 0.96;
 }
+
+.digit-input {
+  padding: 0;
+  line-height: 1;
+}
+
+.letter-code {
+  line-height: calc(var(--cell) * 0.92);
+}
+
+.letter-code::placeholder {
+  font-size: 0.9em;
+  font-weight: 950;
+  text-align: center;
+}
+
+.dividend-area {
+  border-left: 0.09em solid #101820;
+}
+
+.dividend-area::before {
+  content: none;
+}
