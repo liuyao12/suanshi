@@ -17,8 +17,8 @@ const state = {
 const app = document.getElementById('root');
 const NUMBERPAD_MEDIA = '(min-width: 860px) and (orientation: landscape), (min-width: 1024px)';
 const PROBLEM_TYPES = {
-  classic: { label: 'Long division' },
-  letters: { label: 'Letter puzzle' },
+  classic: { label: 'Long division', icon: '' },
+  letters: { label: 'Letter puzzle', icon: 'A' },
 };
 
 function usesCustomNumberpad() {
@@ -269,7 +269,7 @@ function render() {
           <div class="control-row">
             <span class="control-label">Mode</span>
             <div class="segmented" aria-label="Problem type">
-              ${Object.entries(PROBLEM_TYPES).map(([key, setting]) => `<button class="mini ${key === state.problemType ? 'active' : ''}" data-type="${key}" type="button">${setting.label}</button>`).join('')}
+              ${Object.entries(PROBLEM_TYPES).map(([key, setting]) => `<button class="mini mode-button ${key === state.problemType ? 'active' : ''}" data-type="${key}" type="button"><span class="mode-icon" aria-hidden="true">${setting.icon}</span>${setting.label}</button>`).join('')}
             </div>
           </div>
           <div class="control-row">
