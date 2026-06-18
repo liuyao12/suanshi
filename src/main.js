@@ -6,6 +6,7 @@ const DIFFICULTIES = {
 
 const state = {
   difficulty: 'easy',
+  problemType: 'classic',
   answers: {},
   status: 'editing',
   puzzle: null,
@@ -15,6 +16,10 @@ const state = {
 
 const app = document.getElementById('root');
 const NUMBERPAD_MEDIA = '(min-width: 860px) and (orientation: landscape), (min-width: 1024px)';
+const PROBLEM_TYPES = {
+  classic: { label: 'Long division', icon: '' },
+  letters: { label: 'Letter puzzle', icon: 'A' },
+};
 
 function usesCustomNumberpad() {
   return window.matchMedia?.(NUMBERPAD_MEDIA).matches ?? false;
@@ -104,14 +109,102 @@ function pickBlanks(puzzle, blankCount) {
   return new Set(shuffled.slice(0, Math.min(target, shuffled.length - 1)));
 }
 
-function makePuzzle(difficultyKey) {
-  const settings = DIFFICULTIES[difficultyKey];
+
+function digitCellsForPuzzle(puzzle) {
+  if (puzzle.layout === 'arithmetic') {
+    return [
+      ...puzzle.leftCells,
+      ...puzzle.rightCells,
+      ...(puzzle.partialRows || []).flatMap((row) => row.cells),
+      ...puzzle.resultCells,
+    ].filter((cell) => cell?.digit !== undefined);
+  }
+
+  return [
+    ...puzzle.divisorCells,
+    ...puzzle.dividendCells,
+    ...puzzle.quotientCells,
+    ...puzzle.rows.flatMap((row) => row.cells),
+  ].filter((cell) => cell?.digit !== undefined);
+}
+
+function pickLetterBlanks(puzzle) {
+  const counts = new Map();
+  digitCellsForPuzzle(puzzle).forEach((cell) => {
+    counts.set(cell.digit, (counts.get(cell.digit) || 0) + 1);
+  });
+
+  const blanks = new Set();
+  const revealedDigits = new Set();
+  digitCellsForPuzzle(puzzle).forEach((cell) => {
+    if (counts.get(cell.digit) === 1) {
+      revealedDigits.add(cell.digit);
+    } else {
+      blanks.add(cell.id);
+    }
+  });
+
+  return { blanks, revealedDigits };
+}
+
+function arithmeticToken(prefix, value) {
+  return String(value).split('').map((digit, index) => token(`${prefix}-${index}`, digit, prefix));
+}
+
+function padCells(cells, width) {
+  return [...Array(Math.max(0, width - cells.length)).fill(null), ...cells];
+}
+
+function makeArithmeticPuzzle(settings) {
+  const operation = Math.random() < 0.5 ? 'addition' : 'multiplication';
+  const maxOperand = settings.label === 'Easy' ? 99 : settings.label === 'Medium' ? 399 : 999;
+  const minOperand = settings.label === 'Easy' ? 12 : settings.label === 'Medium' ? 24 : 101;
+  const left = randomInt(minOperand, maxOperand);
+  const right = operation === 'addition'
+    ? randomInt(minOperand, maxOperand)
+    : randomInt(settings.label === 'Easy' ? 2 : 6, settings.label === 'Medium' ? 12 : 24);
+  const result = operation === 'addition' ? left + right : left * right;
+  const partials = operation === 'multiplication'
+    ? String(right).split('').reverse().map((digit, shift) => ({ value: left * Number(digit), shift }))
+    : [];
+  const width = Math.max(
+    String(left).length,
+    String(right).length + 1,
+    String(result).length,
+    ...partials.map((partial) => String(partial.value).length + partial.shift),
+  );
+  const partialRows = partials.map((partial, rowIndex) => {
+    const cells = Array(width).fill(null);
+    const text = String(partial.value);
+    const start = width - partial.shift - text.length;
+    text.split('').forEach((digit, index) => {
+      cells[start + index] = token(`partial-${rowIndex}-${index}`, digit, 'multiplication partial');
+    });
+    return { cells, shift: partial.shift };
+  });
+
+  return {
+    layout: 'arithmetic',
+    operation,
+    operator: operation === 'addition' ? '+' : '×',
+    leftCells: padCells(arithmeticToken('left', left), width),
+    rightCells: padCells(arithmeticToken('right', right), width - 1),
+    partialRows,
+    resultCells: padCells(arithmeticToken('result', result), width),
+    width,
+    blanks: new Set(),
+    revealedDigits: new Set(),
+  };
+}
+
+function makeDivisionPuzzle(settings) {
   const divisor = randomInt(settings.minDivisor, settings.maxDivisor);
   const quotient = randomInt(settings.minQuotient, settings.maxQuotient);
   const remainder = randomInt(0, Math.min(divisor - 1, settings.maxRemainder));
   const dividend = divisor * quotient + remainder;
   const work = makeWorkRows(dividend, divisor);
   const puzzle = {
+    layout: 'division',
     divisor,
     dividend,
     quotient,
@@ -122,9 +215,39 @@ function makePuzzle(difficultyKey) {
     rows: work.rows,
     width: work.width,
     blanks: new Set(),
+    revealedDigits: new Set(),
   };
-  puzzle.blanks = pickBlanks(puzzle, settings.blankCount);
   return puzzle;
+}
+
+function makePuzzle(difficultyKey, problemType = 'classic') {
+  const settings = DIFFICULTIES[difficultyKey];
+  const puzzle = problemType === 'letters' && Math.random() < 0.66
+    ? makeArithmeticPuzzle(settings)
+    : makeDivisionPuzzle(settings);
+  if (problemType === 'letters') {
+    const letterPick = pickLetterBlanks(puzzle);
+    puzzle.blanks = letterPick.blanks;
+    puzzle.revealedDigits = letterPick.revealedDigits;
+  } else {
+    puzzle.blanks = pickBlanks(puzzle, settings.blankCount);
+    puzzle.revealedDigits = new Set();
+  }
+  puzzle.blanksById = new Map();
+  collectExpectedDigits(puzzle).forEach((digit, id) => {
+    if (puzzle.blanks.has(id)) puzzle.blanksById.set(id, digit);
+  });
+  return puzzle;
+}
+
+const DIGIT_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K'];
+
+function letterForDigit(digit) {
+  return DIGIT_LETTERS[Number(digit)] ?? '';
+}
+
+function letterCodeClassForCell(cell) {
+  return state.problemType === 'letters' && state.puzzle.blanks.has(cell.id) ? ' letter-code' : '';
 }
 
 function inputMarkup(cell) {
@@ -132,8 +255,11 @@ function inputMarkup(cell) {
   const expected = state.expectedDigits?.get(cell.id);
   const checked = state.status === 'checked' ? (expected !== undefined && value === expected ? ' correct' : ' wrong') : '';
   const active = state.activeInputId === cell.id ? ' active' : '';
-  const readonly = shouldSuppressDeviceKeyboard() ? ' readonly' : '';
-  return `<input class="digit-input${checked}${active}" data-id="${cell.id}" type="tel" inputmode="numeric" pattern="[0-9]*" maxlength="1" autocomplete="off" enterkeyhint="done" aria-label="${cell.role} digit" value="${value}"${readonly}>`;
+  const readonly = ' readonly';
+  const letterCode = letterCodeClassForCell(cell);
+  const groupLetter = letterForDigit(cell.digit);
+  const placeholder = letterCode ? ` placeholder="${groupLetter}" title="${groupLetter} represents one digit"` : '';
+  return `<input class="digit-input${checked}${active}${letterCode}" data-id="${cell.id}" data-digit-letter="${groupLetter}" type="tel" inputmode="numeric" pattern="[0-9]*" maxlength="1" autocomplete="off" enterkeyhint="done" aria-label="${letterCode ? `${groupLetter} coded ` : ''}${cell.role} digit" value="${value}"${placeholder}${readonly}>`;
 }
 
 function cellMarkup(cell, extraClass = '') {
@@ -146,7 +272,41 @@ function cellMarkup(cell, extraClass = '') {
 
 function rowMarkup(cells, className = '') {
   const contents = cells.map((cell) => cellMarkup(cell)).join('');
-  return `<div class="work-row ${className}" style="grid-template-columns: repeat(${state.puzzle.width}, var(--cell));">${contents}</div>`;
+  return `<div class="work-row ${className}" style="grid-template-columns: repeat(${cells.length}, var(--cell));">${contents}</div>`;
+}
+
+function divisionMarkup(puzzle) {
+  return `<section class="division-problem">
+    <div class="quotient-band">
+      <span class="divisor-spacer"></span>
+      ${rowMarkup(puzzle.quotientCells, 'quotient-row')}
+    </div>
+    <div class="bracket-band">
+      <div class="divisor-area">${puzzle.divisorCells.map(cellMarkup).join('')}</div>
+      <div class="dividend-area" style="grid-template-columns: repeat(${puzzle.width}, var(--cell));">${puzzle.dividendCells.map(cellMarkup).join('')}</div>
+    </div>
+    <div class="work-band">
+      <span class="divisor-spacer"></span>
+      <div class="rows">${puzzle.rows.map((row) => rowMarkup(row.cells, row.kind)).join('')}</div>
+    </div>
+  </section>`;
+}
+
+function arithmeticMarkup(puzzle) {
+  const answerLine = `<div class="answer-line" style="width: calc(${puzzle.width} * var(--cell));"></div>`;
+  const partialMarkup = puzzle.operation === 'multiplication'
+    ? `${answerLine}${puzzle.partialRows.map((row) => rowMarkup(row.cells, 'arithmetic-row partial-row')).join('')}${puzzle.partialRows.length > 1 ? answerLine : ''}`
+    : answerLine;
+
+  return `<section class="division-problem arithmetic-problem" aria-label="${puzzle.operation} puzzle">
+    ${rowMarkup(puzzle.leftCells, 'arithmetic-row')}
+    <div class="arithmetic-line">
+      <span class="operator">${puzzle.operator}</span>
+      ${rowMarkup(puzzle.rightCells, 'arithmetic-row')}
+    </div>
+    ${partialMarkup}
+    ${rowMarkup(puzzle.resultCells, 'arithmetic-row')}
+  </section>`;
 }
 
 function render() {
@@ -154,33 +314,38 @@ function render() {
   app.innerHTML = `
     <main class="division-screen">
       <div class="stage">
-      <div class="sheet" aria-label="Full long division puzzle">
+      <div class="sheet" aria-label="Arithmetic puzzle">
+        <button class="reset-button top-reset" data-reset type="button">Reset</button>
         <div class="topbar">
-          <div class="segmented" aria-label="Difficulty">
-            ${Object.entries(DIFFICULTIES).map(([key, setting]) => `<button class="mini ${key === state.difficulty ? 'active' : ''}" data-difficulty="${key}" type="button">${setting.label}</button>`).join('')}
+          <div class="control-row mode-row">
+            <div class="segmented mode-segmented" aria-label="Problem type">
+              ${Object.entries(PROBLEM_TYPES).map(([key, setting]) => `<button class="mini mode-button ${key === state.problemType ? 'active' : ''}" data-type="${key}" type="button"><span class="mode-icon" aria-hidden="true">${setting.icon}</span>${setting.label}</button>`).join('')}
+            </div>
+          </div>
+          <div class="control-row level-row">
+            <div class="segmented" aria-label="Difficulty">
+              ${Object.entries(DIFFICULTIES).map(([key, setting]) => `<button class="mini ${key === state.difficulty ? 'active' : ''}" data-difficulty="${key}" type="button">${setting.label}</button>`).join('')}
+            </div>
           </div>
         </div>
-        <section class="division-problem">
-          <div class="quotient-band">
-            <span class="divisor-spacer"></span>
-            ${rowMarkup(puzzle.quotientCells, 'quotient-row')}
-          </div>
-          <div class="bracket-band">
-            <div class="divisor-area">${puzzle.divisorCells.map(cellMarkup).join('')}</div>
-            <div class="dividend-area" style="grid-template-columns: repeat(${puzzle.width}, var(--cell));">${puzzle.dividendCells.map(cellMarkup).join('')}</div>
-          </div>
-          <div class="work-band">
-            <span class="divisor-spacer"></span>
-            <div class="rows">${puzzle.rows.map((row) => rowMarkup(row.cells, row.kind)).join('')}</div>
-          </div>
-        </section>
-        <div class="feedback" aria-live="polite">${state.message || 'Fill in every box. It checks automatically.'}</div>
+        ${puzzle.layout === 'arithmetic' ? arithmeticMarkup(puzzle) : divisionMarkup(puzzle)}
       </div>
       <aside class="numberpad" aria-label="Number pad">
-        ${[1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map((digit) => `<button type="button" data-pad="${digit}">${digit}</button>`).join('')}
+        ${[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((digit) => `<button type="button" data-pad="${digit}" ${isDigitUnavailable(digit) ? 'disabled aria-disabled="true"' : ''}>${digit}</button>`).join('')}
       </aside>
       </div>
     </main>`;
+}
+
+function usedDigits() {
+  return new Set([
+    ...Object.values(state.answers).filter(Boolean),
+    ...(state.problemType === 'letters' ? state.puzzle?.revealedDigits || [] : []),
+  ]);
+}
+
+function isDigitUnavailable(digit) {
+  return state.problemType === 'letters' && usedDigits().has(String(digit));
 }
 
 function newPuzzle(difficulty = state.difficulty) {
@@ -189,8 +354,8 @@ function newPuzzle(difficulty = state.difficulty) {
   state.status = 'editing';
   state.expectedDigits = null;
   state.activeInputId = null;
-  state.message = 'Fill in every box. It checks automatically.';
-  state.puzzle = makePuzzle(difficulty);
+  state.message = helpMessage();
+  state.puzzle = makePuzzle(difficulty, state.problemType);
   render();
 }
 
@@ -199,7 +364,7 @@ function checkAnswer() {
   if (blanks.some((id) => !state.answers[id])) {
     state.status = 'editing';
     state.expectedDigits = null;
-    state.message = 'Fill in every box. It checks automatically.';
+    state.message = helpMessage();
     return false;
   }
 
@@ -212,7 +377,7 @@ function checkAnswer() {
     return true;
   }
 
-  state.message = 'Some boxes do not make a valid long division.';
+  state.message = 'Some boxes do not make a valid equation.';
   render();
   return false;
 }
@@ -230,23 +395,21 @@ function numberFromCells(cells, roles = null) {
 
 function collectExpectedDigits(puzzle) {
   const expected = new Map();
-  const collect = (cell) => {
-    if (cell?.digit !== undefined) expected.set(cell.id, cell.digit);
-  };
-  puzzle.divisorCells.forEach(collect);
-  puzzle.dividendCells.forEach(collect);
-  puzzle.quotientCells.forEach(collect);
-  puzzle.rows.forEach((row) => row.cells.forEach(collect));
+  digitCellsForPuzzle(puzzle).forEach((cell) => {
+    expected.set(cell.id, cell.digit);
+  });
   return expected;
 }
 
 function expectedDigitsFromFilledProblem() {
+  if (state.puzzle.layout === 'arithmetic') return collectExpectedDigits(state.puzzle);
   const divisor = numberFromCells(state.puzzle.divisorCells);
   const dividend = numberFromCells(state.puzzle.dividendCells, new Set(['dividend']));
   if (!Number.isInteger(divisor) || !Number.isInteger(dividend) || divisor <= 0) return null;
 
   const expectedWork = makeWorkRows(dividend, divisor);
   const expectedPuzzle = {
+    layout: 'division',
     divisorCells: String(divisor).split('').map((digit, index) => token(`divisor-${index}`, digit, 'divisor')),
     dividendCells: expectedWork.dividendCells,
     quotientCells: expectedWork.quotientCells,
@@ -256,32 +419,67 @@ function expectedDigitsFromFilledProblem() {
 }
 
 function allRenderedDigitsMatch(expected) {
-  const currentCells = [
-    ...state.puzzle.divisorCells,
-    ...state.puzzle.dividendCells,
-    ...state.puzzle.quotientCells,
-    ...state.puzzle.rows.flatMap((row) => row.cells),
-  ].filter((cell) => cell?.digit !== undefined);
-
-  return currentCells.every((cell) => expected.get(cell.id) === valueForCell(cell));
+  return digitCellsForPuzzle(state.puzzle).every((cell) => expected.get(cell.id) === valueForCell(cell));
 }
 
 app.addEventListener('click', (event) => {
   const difficulty = event.target.closest('[data-difficulty]')?.dataset.difficulty;
-  const padDigit = event.target.closest('[data-pad]')?.dataset.pad;
+  const type = event.target.closest('[data-type]')?.dataset.type;
+  const reset = event.target.closest('[data-reset]');
+  const padButton = event.target.closest('[data-pad]');
+  const padDigit = padButton?.dataset.pad;
+  if (reset) resetPuzzle();
+  if (type) newPuzzleWithType(type);
   if (difficulty) newPuzzle(difficulty);
-  if (padDigit !== undefined && state.activeInputId) {
+  if (padDigit !== undefined && state.activeInputId && !padButton.disabled) {
     fillDigit(state.activeInputId, padDigit);
     state.activeInputId = null;
     render();
   }
 });
 
-function fillDigit(id, digit) {
-  state.answers[id] = String(digit).replace(/\D/g, '').slice(-1);
+function helpMessage() {
+  return state.problemType === 'letters'
+    ? 'Repeated digits are letters. Digits that appear once are shown and locked on the number row.'
+    : 'Fill in every box. It checks automatically.';
+}
+
+function newPuzzleWithType(type) {
+  state.problemType = type;
+  newPuzzle();
+}
+
+function resetPuzzle() {
+  state.answers = {};
   state.status = 'editing';
   state.expectedDigits = null;
-  state.message = 'Fill in every box. It checks automatically.';
+  state.activeInputId = null;
+  state.message = helpMessage();
+  render();
+}
+
+function fillDigit(id, digit) {
+  const nextDigit = String(digit).replace(/\D/g, '').slice(-1);
+  const codedDigit = state.problemType === 'letters' && state.puzzle.blanks.has(id) ? state.puzzle.blanksById.get(id) : null;
+  if (!nextDigit && state.problemType === 'letters') {
+    [...state.puzzle.blanks].forEach((blankId) => {
+      if (state.puzzle.blanksById.get(blankId) === codedDigit) state.answers[blankId] = '';
+    });
+  } else if (!nextDigit) {
+    state.answers[id] = '';
+  } else if (state.problemType === 'letters' && isDigitUnavailable(nextDigit) && state.answers[id] !== nextDigit) {
+    render();
+    return false;
+  } else if (state.problemType === 'letters') {
+    [...state.puzzle.blanks].forEach((blankId) => {
+      if (state.puzzle.blanksById.get(blankId) === codedDigit) state.answers[blankId] = nextDigit;
+    });
+  } else {
+    state.answers[id] = nextDigit;
+  }
+  state.status = 'editing';
+  state.expectedDigits = null;
+  state.message = helpMessage();
   return checkAnswer();
 }
 
@@ -289,7 +487,10 @@ app.addEventListener('input', (event) => {
   if (!event.target.matches('.digit-input')) return;
   const id = event.target.dataset.id;
   fillDigit(id, event.target.value);
-  event.target.value = state.answers[id];
+  render();
+  const updatedInput = document.querySelector(`[data-id="${id}"]`);
+  if (updatedInput) updatedInput.value = state.answers[id] || '';
+  event.target.value = state.answers[id] || '';
   if (state.answers[id]) {
     state.activeInputId = null;
     event.target.blur();
@@ -302,6 +503,15 @@ app.addEventListener('focusin', (event) => {
   document.querySelectorAll('.digit-input.active').forEach((input) => input.classList.remove('active'));
   event.target.classList.add('active');
   event.target.select();
+});
+
+document.addEventListener('keydown', (event) => {
+  if (!state.activeInputId || !/^\d$/.test(event.key)) return;
+  if (isDigitUnavailable(event.key)) return;
+  event.preventDefault();
+  fillDigit(state.activeInputId, event.key);
+  state.activeInputId = null;
+  render();
 });
 
 window.matchMedia?.(NUMBERPAD_MEDIA).addEventListener?.('change', () => {

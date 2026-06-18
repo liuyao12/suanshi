@@ -246,3 +246,289 @@ button, .digit-input { touch-action: manipulation; }
   .feedback { font-size: 0.82rem; }
   .mini { min-height: 1.8rem; }
 }
+
+.letter-code {
+  border-color: #101820;
+  background: #ffffff;
+  color: #101820;
+  font-weight: 950;
+  box-shadow: inset 0 0 0 0.12em rgba(16, 24, 32, 0.08), 0 0 0 0.08em rgba(16, 24, 32, 0.18);
+}
+
+.letter-code::placeholder {
+  color: #101820;
+  opacity: 0.9;
+}
+
+.letter-code.active,
+.letter-code:focus {
+  border-color: #101820;
+  box-shadow: inset 0 0 0 0.12em rgba(16, 24, 32, 0.08), 0 0 0 0.18em rgba(16, 24, 32, 0.25);
+}
+
+.numberpad button:disabled {
+  color: #9ca3af;
+  cursor: not-allowed;
+  background: #e5e7eb;
+  text-decoration: line-through;
+  opacity: 0.65;
+}
+
+.arithmetic-problem {
+  display: grid;
+  justify-content: center;
+  gap: 0.08em;
+}
+
+.arithmetic-problem .work-row {
+  justify-content: end;
+}
+
+.arithmetic-line {
+  display: grid;
+  grid-template-columns: var(--cell) auto;
+  align-items: center;
+}
+
+.operator {
+  display: inline-grid;
+  place-items: center;
+  width: var(--cell);
+  height: var(--cell);
+}
+
+.answer-line {
+  display: grid;
+  border-top: 0.09em solid #101820;
+  height: 0.16em;
+}
+
+.bottom-actions {
+  display: flex;
+  justify-content: center;
+}
+
+.reset-button {
+  min-height: 2.2rem;
+  padding: 0 1rem;
+  border: 1px solid #d0bea0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.88);
+  color: #463a2b;
+  cursor: pointer;
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.reset-button:active {
+  transform: translateY(1px);
+  background: #f3ead7;
+}
+
+.division-screen {
+  padding-bottom: max(5.4rem, clamp(0.35rem, 2vw, 1.25rem));
+}
+
+.numberpad {
+  position: fixed;
+  right: 50%;
+  bottom: max(0.55rem, env(safe-area-inset-bottom));
+  left: auto;
+  z-index: 10;
+  display: grid;
+  grid-template-columns: repeat(10, minmax(1.7rem, 1fr));
+  gap: clamp(0.16rem, 1.2vw, 0.45rem);
+  width: min(calc(100vw - 0.7rem), 42rem);
+  padding: clamp(0.25rem, 1.4vw, 0.55rem);
+  border: 1px solid #e5d8bb;
+  border-radius: 1rem;
+  background: rgba(255, 250, 240, 0.96);
+  box-shadow: 0 0.8rem 2rem rgba(65, 44, 13, 0.13);
+  transform: translateX(50%);
+}
+
+.numberpad button {
+  width: 100%;
+  min-width: 0;
+  height: clamp(2.2rem, 9vw, 3.4rem);
+  border: 1px solid #d0bea0;
+  border-radius: 0.7rem;
+  background: #ffffff;
+  color: #243f74;
+  cursor: pointer;
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: clamp(1rem, 4vw, 1.35rem);
+  font-weight: 900;
+}
+
+.numberpad button:active {
+  transform: translateY(1px);
+  background: #eef3ff;
+}
+
+.numberpad button:last-child {
+  grid-column: auto;
+}
+
+.division-screen {
+  height: 100dvh;
+  min-height: 100dvh;
+  overflow: hidden;
+  padding-top: clamp(0.35rem, 2vw, 1.25rem);
+  padding-right: clamp(0.35rem, 2vw, 1.25rem);
+  padding-left: clamp(0.35rem, 2vw, 1.25rem);
+  padding-bottom: max(5.4rem, calc(env(safe-area-inset-bottom) + 4.9rem));
+}
+
+.stage {
+  height: 100%;
+  min-height: 0;
+}
+
+.sheet {
+  height: 100%;
+  min-height: 0;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  flex-direction: column;
+  align-items: center;
+}
+
+.control-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+  padding: 0.24rem 0.4rem;
+  border: 1px solid rgba(208, 190, 160, 0.72);
+  border-radius: 999px;
+  background: rgba(255, 250, 240, 0.88);
+}
+
+.control-label {
+  color: #725d3e;
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: clamp(0.65rem, 2.2vw, 0.76rem);
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.division-problem {
+  align-self: stretch;
+  display: grid;
+  place-items: center;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.arithmetic-problem {
+  align-content: center;
+}
+
+.mode-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.mode-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 1.15em;
+  height: 1.15em;
+  border: 0.12em solid currentColor;
+  border-radius: 0.18em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 0.95em;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.numberpad {
+  top: auto;
+  max-height: calc(4.4rem + env(safe-area-inset-bottom));
+}
+
+.division-problem {
+  display: block;
+  align-self: center;
+  justify-self: center;
+  max-height: 100%;
+  overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.arithmetic-problem {
+  display: grid;
+}
+
+.dividend-area {
+  position: relative;
+  border-left: 0;
+}
+
+.dividend-area::before {
+  content: "";
+  position: absolute;
+  top: -0.09em;
+  bottom: -0.03em;
+  left: -0.08em;
+  width: 0.36em;
+  border-left: 0.09em solid #101820;
+  border-bottom-left-radius: 100% 70%;
+  transform: skewX(-12deg);
+  transform-origin: top center;
+  pointer-events: none;
+}
+
+.sheet {
+  position: relative;
+}
+
+.top-reset {
+  position: absolute;
+  top: clamp(0.45rem, 2vw, 0.8rem);
+  right: clamp(0.45rem, 2vw, 0.8rem);
+  z-index: 4;
+  min-height: 1.9rem;
+  padding: 0 0.72rem;
+}
+
+.mode-segmented .mini {
+  border-color: #d9a0a0;
+  color: #9d2626;
+}
+
+.mode-segmented .mini.active {
+  border-color: #b91c1c;
+  background: #b91c1c;
+  color: #fff;
+}
+
+.dividend-area::before {
+  bottom: 0;
+  left: -0.03em;
+  width: 0;
+  border-bottom-left-radius: 0;
+  transform: rotate(8deg);
+}
+
+.letter-code::placeholder {
+  font-size: 0.62em;
+  font-weight: 900;
+}
+
+.partial-row {
+  opacity: 0.96;
+}
