@@ -453,3 +453,12 @@ button, .digit-input { touch-action: manipulation; }
   font-weight: 950;
   line-height: 1;
 }
+
+.numberpad {
+  top: auto;
+  max-height: calc(4.4rem + env(safe-area-inset-bottom));
+}
+
+.division-problem {
+  place-items: safe center;
+}
