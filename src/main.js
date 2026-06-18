@@ -306,8 +306,8 @@ function divisionMarkup(puzzle) {
 
 function arithmeticMarkup(puzzle) {
   const answerLine = `<div class="answer-line" style="width: calc(${puzzle.width} * var(--cell));"></div>`;
-  const partialMarkup = puzzle.operation === 'multiplication'
-    ? `${answerLine}${puzzle.partialRows.map((row) => rowMarkup(row.cells, 'arithmetic-row partial-row')).join('')}${puzzle.partialRows.length > 1 ? answerLine : ''}`
+  const partialMarkup = puzzle.operation === 'multiplication' && puzzle.partialRows.length > 1
+    ? `${answerLine}${puzzle.partialRows.map((row) => rowMarkup(row.cells, 'arithmetic-row partial-row')).join('')}${answerLine}`
     : answerLine;
 
   return `<section class="division-problem arithmetic-problem" aria-label="${puzzle.operation} puzzle">
@@ -327,7 +327,6 @@ function render() {
     <main class="division-screen">
       <div class="stage">
       <div class="sheet" aria-label="Arithmetic puzzle">
-        <button class="reset-button top-reset" data-reset type="button">Reset</button>
         <div class="topbar">
           <div class="control-row mode-row">
             <div class="segmented mode-segmented" aria-label="Problem type">
@@ -339,11 +338,12 @@ function render() {
               ${Object.entries(DIFFICULTIES).map(([key, setting]) => `<button class="mini ${key === state.difficulty ? 'active' : ''}" data-difficulty="${key}" type="button">${setting.label}</button>`).join('')}
             </div>
           </div>
+          <button class="reset-button reset-icon" data-reset type="button" aria-label="Reset puzzle" title="Reset puzzle">↻</button>
         </div>
         ${puzzle.layout === 'arithmetic' ? arithmeticMarkup(puzzle) : divisionMarkup(puzzle)}
       </div>
       <aside class="numberpad" aria-label="Number pad">
-        ${[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((digit) => `<button type="button" data-pad="${digit}" ${isDigitUnavailable(digit) ? 'disabled aria-disabled="true"' : ''}>${digit}</button>`).join('')}
+        ${[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((digit) => `<button type="button" data-pad="${digit}" ${isDigitUnavailable(digit) ? 'disabled aria-disabled="true"' : ''}>${digit}</button>`).join('')}<button class="erase-key" type="button" data-erase aria-label="Erase" title="Erase">⌫</button>
       </aside>
       </div>
     </main>`;
@@ -414,7 +414,7 @@ function collectExpectedDigits(puzzle) {
 }
 
 function expectedDigitsFromFilledProblem() {
-  if (state.puzzle.layout === 'arithmetic') return collectExpectedDigits(state.puzzle);
+  if (state.puzzle.layout === 'arithmetic') return expectedDigitsFromFilledArithmetic();
   const divisor = numberFromCells(state.puzzle.divisorCells);
   const dividend = numberFromCells(state.puzzle.dividendCells, new Set(['dividend']));
   if (!Number.isInteger(divisor) || !Number.isInteger(dividend) || divisor <= 0) return null;
@@ -430,6 +430,30 @@ function expectedDigitsFromFilledProblem() {
   return collectExpectedDigits(expectedPuzzle);
 }
 
+function expectedDigitsFromFilledArithmetic() {
+  const left = numberFromCells(state.puzzle.leftCells);
+  const right = numberFromCells(state.puzzle.rightCells);
+  const result = numberFromCells(state.puzzle.resultCells);
+  if (!Number.isInteger(left) || !Number.isInteger(right) || !Number.isInteger(result)) return null;
+  if (state.puzzle.operation === 'addition' && left + right !== result) return null;
+  if (state.puzzle.operation === 'multiplication' && left * right !== result) return null;
+
+  if (state.puzzle.operation === 'multiplication' && state.puzzle.partialRows.length > 1) {
+    const rightDigits = String(right).split('').reverse();
+    const partialsMatch = state.puzzle.partialRows.every((row, index) => {
+      const partial = numberFromCells(row.cells);
+      return partial === left * Number(rightDigits[index]);
+    });
+    if (!partialsMatch) return null;
+  }
+
+  const expected = new Map();
+  digitCellsForPuzzle(state.puzzle).forEach((cell) => {
+    expected.set(cell.id, valueForCell(cell));
+  });
+  return expected;
+}
+
 function allRenderedDigitsMatch(expected) {
   return digitCellsForPuzzle(state.puzzle).every((cell) => expected.get(cell.id) === valueForCell(cell));
 }
@@ -438,11 +462,17 @@ app.addEventListener('click', (event) => {
   const difficulty = event.target.closest('[data-difficulty]')?.dataset.difficulty;
   const type = event.target.closest('[data-type]')?.dataset.type;
   const reset = event.target.closest('[data-reset]');
+  const erase = event.target.closest('[data-erase]');
   const padButton = event.target.closest('[data-pad]');
   const padDigit = padButton?.dataset.pad;
   if (reset) resetPuzzle();
   if (type) newPuzzleWithType(type);
   if (difficulty) newPuzzle(difficulty);
+  if (erase && state.activeInputId) {
+    fillDigit(state.activeInputId, '');
+    render();
+    return;
+  }
   if (padDigit !== undefined && state.activeInputId && !padButton.disabled) {
     fillDigit(state.activeInputId, padDigit);
     state.activeInputId = null;
@@ -518,7 +548,14 @@ app.addEventListener('focusin', (event) => {
 });
 
 document.addEventListener('keydown', (event) => {
-  if (!state.activeInputId || !/^\d$/.test(event.key)) return;
+  if (!state.activeInputId) return;
+  if (event.key === 'Backspace' || event.key === 'Delete') {
+    event.preventDefault();
+    fillDigit(state.activeInputId, '');
+    render();
+    return;
+  }
+  if (!/^\d$/.test(event.key)) return;
   if (isDigitUnavailable(event.key)) return;
   event.preventDefault();
   fillDigit(state.activeInputId, event.key);

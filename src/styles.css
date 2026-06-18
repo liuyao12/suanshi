@@ -566,3 +566,21 @@ button, .digit-input { touch-action: manipulation; }
   margin-left: calc(var(--cell) * -0.2);
   padding-left: calc(var(--cell) * 0.2);
 }
+
+.reset-icon {
+  width: 2.1rem;
+  min-height: 2.1rem;
+  padding: 0;
+  border-radius: 999px;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.numberpad {
+  grid-template-columns: repeat(11, minmax(1.7rem, 1fr));
+  width: min(calc(100vw - 0.7rem), 46rem);
+}
+
+.erase-key {
+  color: #9d2626;
+}
