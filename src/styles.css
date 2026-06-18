@@ -643,3 +643,13 @@ button, .digit-input { touch-action: manipulation; }
   margin-left: 0.45rem;
   font-size: 1.35rem;
 }
+
+.reset-tall {
+  align-self: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  min-height: 2.25rem;
+  margin-left: 0.4rem;
+  border-radius: 999px;
+  font-size: 1.12rem;
+}
