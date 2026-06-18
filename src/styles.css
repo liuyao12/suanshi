@@ -460,5 +460,34 @@ button, .digit-input { touch-action: manipulation; }
 }
 
 .division-problem {
-  place-items: safe center;
+  display: block;
+  align-self: center;
+  justify-self: center;
+  max-height: 100%;
+  overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.arithmetic-problem {
+  display: grid;
+}
+
+.dividend-area {
+  position: relative;
+  border-left: 0;
+}
+
+.dividend-area::before {
+  content: "";
+  position: absolute;
+  top: -0.09em;
+  bottom: -0.03em;
+  left: -0.08em;
+  width: 0.36em;
+  border-left: 0.09em solid #101820;
+  border-bottom-left-radius: 100% 70%;
+  transform: skewX(-12deg);
+  transform-origin: top center;
+  pointer-events: none;
 }
