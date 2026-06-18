@@ -491,3 +491,44 @@ button, .digit-input { touch-action: manipulation; }
   transform-origin: top center;
   pointer-events: none;
 }
+
+.sheet {
+  position: relative;
+}
+
+.top-reset {
+  position: absolute;
+  top: clamp(0.45rem, 2vw, 0.8rem);
+  right: clamp(0.45rem, 2vw, 0.8rem);
+  z-index: 4;
+  min-height: 1.9rem;
+  padding: 0 0.72rem;
+}
+
+.mode-segmented .mini {
+  border-color: #d9a0a0;
+  color: #9d2626;
+}
+
+.mode-segmented .mini.active {
+  border-color: #b91c1c;
+  background: #b91c1c;
+  color: #fff;
+}
+
+.dividend-area::before {
+  bottom: 0;
+  left: -0.03em;
+  width: 0;
+  border-bottom-left-radius: 0;
+  transform: rotate(8deg);
+}
+
+.letter-code::placeholder {
+  font-size: 0.62em;
+  font-weight: 900;
+}
+
+.partial-row {
+  opacity: 0.96;
+}

@@ -110,24 +110,41 @@ function pickBlanks(puzzle, blankCount) {
 }
 
 
-function pickLetterBlanks(puzzle) {
-  const blanks = new Set();
-  const collect = (cell) => {
-    if (cell?.digit !== undefined) blanks.add(cell.id);
-  };
-
+function digitCellsForPuzzle(puzzle) {
   if (puzzle.layout === 'arithmetic') {
-    puzzle.leftCells.forEach(collect);
-    puzzle.rightCells.forEach(collect);
-    puzzle.resultCells.forEach(collect);
-  } else {
-    puzzle.divisorCells.forEach(collect);
-    puzzle.dividendCells.forEach(collect);
-    puzzle.quotientCells.forEach(collect);
-    puzzle.rows.forEach((row) => row.cells.forEach(collect));
+    return [
+      ...puzzle.leftCells,
+      ...puzzle.rightCells,
+      ...(puzzle.partialRows || []).flatMap((row) => row.cells),
+      ...puzzle.resultCells,
+    ].filter((cell) => cell?.digit !== undefined);
   }
 
-  return blanks;
+  return [
+    ...puzzle.divisorCells,
+    ...puzzle.dividendCells,
+    ...puzzle.quotientCells,
+    ...puzzle.rows.flatMap((row) => row.cells),
+  ].filter((cell) => cell?.digit !== undefined);
+}
+
+function pickLetterBlanks(puzzle) {
+  const counts = new Map();
+  digitCellsForPuzzle(puzzle).forEach((cell) => {
+    counts.set(cell.digit, (counts.get(cell.digit) || 0) + 1);
+  });
+
+  const blanks = new Set();
+  const revealedDigits = new Set();
+  digitCellsForPuzzle(puzzle).forEach((cell) => {
+    if (counts.get(cell.digit) === 1) {
+      revealedDigits.add(cell.digit);
+    } else {
+      blanks.add(cell.id);
+    }
+  });
+
+  return { blanks, revealedDigits };
 }
 
 function arithmeticToken(prefix, value) {
@@ -147,16 +164,36 @@ function makeArithmeticPuzzle(settings) {
     ? randomInt(minOperand, maxOperand)
     : randomInt(settings.label === 'Easy' ? 2 : 6, settings.label === 'Medium' ? 12 : 24);
   const result = operation === 'addition' ? left + right : left * right;
-  const width = Math.max(String(left).length, String(right).length + 1, String(result).length);
+  const partials = operation === 'multiplication'
+    ? String(right).split('').reverse().map((digit, shift) => ({ value: left * Number(digit), shift }))
+    : [];
+  const width = Math.max(
+    String(left).length,
+    String(right).length + 1,
+    String(result).length,
+    ...partials.map((partial) => String(partial.value).length + partial.shift),
+  );
+  const partialRows = partials.map((partial, rowIndex) => {
+    const cells = Array(width).fill(null);
+    const text = String(partial.value);
+    const start = width - partial.shift - text.length;
+    text.split('').forEach((digit, index) => {
+      cells[start + index] = token(`partial-${rowIndex}-${index}`, digit, 'multiplication partial');
+    });
+    return { cells, shift: partial.shift };
+  });
+
   return {
     layout: 'arithmetic',
     operation,
     operator: operation === 'addition' ? '+' : '×',
     leftCells: padCells(arithmeticToken('left', left), width),
     rightCells: padCells(arithmeticToken('right', right), width - 1),
+    partialRows,
     resultCells: padCells(arithmeticToken('result', result), width),
     width,
     blanks: new Set(),
+    revealedDigits: new Set(),
   };
 }
 
@@ -178,6 +215,7 @@ function makeDivisionPuzzle(settings) {
     rows: work.rows,
     width: work.width,
     blanks: new Set(),
+    revealedDigits: new Set(),
   };
   return puzzle;
 }
@@ -187,7 +225,14 @@ function makePuzzle(difficultyKey, problemType = 'classic') {
   const puzzle = problemType === 'letters' && Math.random() < 0.66
     ? makeArithmeticPuzzle(settings)
     : makeDivisionPuzzle(settings);
-  puzzle.blanks = problemType === 'letters' ? pickLetterBlanks(puzzle) : pickBlanks(puzzle, settings.blankCount);
+  if (problemType === 'letters') {
+    const letterPick = pickLetterBlanks(puzzle);
+    puzzle.blanks = letterPick.blanks;
+    puzzle.revealedDigits = letterPick.revealedDigits;
+  } else {
+    puzzle.blanks = pickBlanks(puzzle, settings.blankCount);
+    puzzle.revealedDigits = new Set();
+  }
   puzzle.blanksById = new Map();
   collectExpectedDigits(puzzle).forEach((digit, id) => {
     if (puzzle.blanks.has(id)) puzzle.blanksById.set(id, digit);
@@ -248,13 +293,18 @@ function divisionMarkup(puzzle) {
 }
 
 function arithmeticMarkup(puzzle) {
+  const answerLine = `<div class="answer-line" style="width: calc(${puzzle.width} * var(--cell));"></div>`;
+  const partialMarkup = puzzle.operation === 'multiplication'
+    ? `${answerLine}${puzzle.partialRows.map((row) => rowMarkup(row.cells, 'arithmetic-row partial-row')).join('')}${puzzle.partialRows.length > 1 ? answerLine : ''}`
+    : answerLine;
+
   return `<section class="division-problem arithmetic-problem" aria-label="${puzzle.operation} puzzle">
     ${rowMarkup(puzzle.leftCells, 'arithmetic-row')}
     <div class="arithmetic-line">
       <span class="operator">${puzzle.operator}</span>
       ${rowMarkup(puzzle.rightCells, 'arithmetic-row')}
     </div>
-    <div class="answer-line" style="width: calc(${puzzle.width} * var(--cell));"></div>
+    ${partialMarkup}
     ${rowMarkup(puzzle.resultCells, 'arithmetic-row')}
   </section>`;
 }
@@ -265,25 +315,20 @@ function render() {
     <main class="division-screen">
       <div class="stage">
       <div class="sheet" aria-label="Arithmetic puzzle">
+        <button class="reset-button top-reset" data-reset type="button">Reset</button>
         <div class="topbar">
-          <div class="control-row">
-            <span class="control-label">Mode</span>
-            <div class="segmented" aria-label="Problem type">
+          <div class="control-row mode-row">
+            <div class="segmented mode-segmented" aria-label="Problem type">
               ${Object.entries(PROBLEM_TYPES).map(([key, setting]) => `<button class="mini mode-button ${key === state.problemType ? 'active' : ''}" data-type="${key}" type="button"><span class="mode-icon" aria-hidden="true">${setting.icon}</span>${setting.label}</button>`).join('')}
             </div>
           </div>
-          <div class="control-row">
-            <span class="control-label">Level</span>
+          <div class="control-row level-row">
             <div class="segmented" aria-label="Difficulty">
               ${Object.entries(DIFFICULTIES).map(([key, setting]) => `<button class="mini ${key === state.difficulty ? 'active' : ''}" data-difficulty="${key}" type="button">${setting.label}</button>`).join('')}
             </div>
           </div>
         </div>
         ${puzzle.layout === 'arithmetic' ? arithmeticMarkup(puzzle) : divisionMarkup(puzzle)}
-        <div class="feedback" aria-live="polite">${state.message || 'Fill in every box. It checks automatically.'}</div>
-        <div class="bottom-actions">
-          <button class="reset-button" data-reset type="button">Reset</button>
-        </div>
       </div>
       <aside class="numberpad" aria-label="Number pad">
         ${[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((digit) => `<button type="button" data-pad="${digit}" ${isDigitUnavailable(digit) ? 'disabled aria-disabled="true"' : ''}>${digit}</button>`).join('')}
@@ -293,7 +338,10 @@ function render() {
 }
 
 function usedDigits() {
-  return new Set(Object.values(state.answers).filter(Boolean));
+  return new Set([
+    ...Object.values(state.answers).filter(Boolean),
+    ...(state.problemType === 'letters' ? state.puzzle?.revealedDigits || [] : []),
+  ]);
 }
 
 function isDigitUnavailable(digit) {
@@ -347,19 +395,9 @@ function numberFromCells(cells, roles = null) {
 
 function collectExpectedDigits(puzzle) {
   const expected = new Map();
-  const collect = (cell) => {
-    if (cell?.digit !== undefined) expected.set(cell.id, cell.digit);
-  };
-  if (puzzle.layout === 'arithmetic') {
-    puzzle.leftCells.forEach(collect);
-    puzzle.rightCells.forEach(collect);
-    puzzle.resultCells.forEach(collect);
-  } else {
-    puzzle.divisorCells.forEach(collect);
-    puzzle.dividendCells.forEach(collect);
-    puzzle.quotientCells.forEach(collect);
-    puzzle.rows.forEach((row) => row.cells.forEach(collect));
-  }
+  digitCellsForPuzzle(puzzle).forEach((cell) => {
+    expected.set(cell.id, cell.digit);
+  });
   return expected;
 }
 
@@ -381,20 +419,7 @@ function expectedDigitsFromFilledProblem() {
 }
 
 function allRenderedDigitsMatch(expected) {
-  const currentCells = (state.puzzle.layout === 'arithmetic'
-    ? [
-      ...state.puzzle.leftCells,
-      ...state.puzzle.rightCells,
-      ...state.puzzle.resultCells,
-    ]
-    : [
-      ...state.puzzle.divisorCells,
-      ...state.puzzle.dividendCells,
-      ...state.puzzle.quotientCells,
-      ...state.puzzle.rows.flatMap((row) => row.cells),
-    ]).filter((cell) => cell?.digit !== undefined);
-
-  return currentCells.every((cell) => expected.get(cell.id) === valueForCell(cell));
+  return digitCellsForPuzzle(state.puzzle).every((cell) => expected.get(cell.id) === valueForCell(cell));
 }
 
 app.addEventListener('click', (event) => {
@@ -415,7 +440,7 @@ app.addEventListener('click', (event) => {
 
 function helpMessage() {
   return state.problemType === 'letters'
-    ? 'Use the letters to identify each digit. All digits in this puzzle are shown as letters.'
+    ? 'Repeated digits are letters. Digits that appear once are shown and locked on the number row.'
     : 'Fill in every box. It checks automatically.';
 }
 
@@ -478,6 +503,15 @@ app.addEventListener('focusin', (event) => {
   document.querySelectorAll('.digit-input.active').forEach((input) => input.classList.remove('active'));
   event.target.classList.add('active');
   event.target.select();
+});
+
+document.addEventListener('keydown', (event) => {
+  if (!state.activeInputId || !/^\d$/.test(event.key)) return;
+  if (isDigitUnavailable(event.key)) return;
+  event.preventDefault();
+  fillDigit(state.activeInputId, event.key);
+  state.activeInputId = null;
+  render();
 });
 
 window.matchMedia?.(NUMBERPAD_MEDIA).addEventListener?.('change', () => {
